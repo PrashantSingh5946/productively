@@ -19,7 +19,6 @@
     },
     "android": {
       "package": "com.productively.app",
-      "edgeToEdgeEnabled": true,
       "adaptiveIcon": {
         "backgroundColor": "#FF8A5B",
         "foregroundImage": "./assets/android-icon-foreground.png",
