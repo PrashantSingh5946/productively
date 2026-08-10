@@ -5,9 +5,11 @@ import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Grad, Spacer, T, Tap } from '../../src/ui';
 import { Icon } from '../../src/icons';
-import { C, G } from '../../src/theme';
+import { C, G, SHADOW } from '../../src/theme';
 
+import { useT } from '../../src/theming';
 export default function Welcome() {
+  useT();
   const insets = useSafeAreaInsets();
   const go = () => router.push('/onboarding/carousel');
 
@@ -47,14 +49,10 @@ export default function Welcome() {
             paddingVertical: 9,
             paddingHorizontal: 18,
             borderRadius: 999,
-            backgroundColor: '#FFFAF6',
+            backgroundColor: C.accentWash,
             borderWidth: 1.5,
-            borderColor: '#FFB894',
-            shadowColor: C.ink,
-            shadowOpacity: 0.08,
-            shadowRadius: 14,
-            shadowOffset: { width: 0, height: 4 },
-            elevation: 3,
+            borderColor: C.accentTintBorder,
+            boxShadow: SHADOW.row,
           }}
         >
           <T size={13} weight={700} color={C.accentInk}>
@@ -68,6 +66,13 @@ export default function Welcome() {
         <Tap onPress={go}>
           <T size={14} center color={C.textSoft} style={{ paddingTop: 6 }}>
             Already with us? <T size={14} weight={700} color={C.ink}>Sign in</T>
+          </T>
+        </Tap>
+
+        {/* Coming from an old phone: skip the whole setup and pull it back. */}
+        <Tap onPress={() => router.push('/settings/backup')}>
+          <T size={14} center weight={600} color={C.textSoft} style={{ paddingTop: 2 }}>
+            Restore from a backup
           </T>
         </Tap>
       </View>

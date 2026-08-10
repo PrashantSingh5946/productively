@@ -3,11 +3,12 @@ import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Row, T, Tap, TopBar } from '../../src/ui';
+import { Grad, Row, T, Tap, TopBar, cardSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { C, G } from '../../src/theme';
 import { ARTICLES } from '../../src/data';
 
+import { useT } from '../../src/theming';
 const TIMER_TOPICS = [
   { id: 'consistency', title: 'When consistency beats speed' },
   { id: 'what', title: 'What is a routine?' },
@@ -15,6 +16,7 @@ const TIMER_TOPICS = [
 ];
 
 export default function Guide() {
+  useT();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<'habits' | 'timer'>(tab === 'timer' ? 'timer' : 'habits');
@@ -25,7 +27,7 @@ export default function Guide() {
       : TIMER_TOPICS.map((t) => ARTICLES.find((a) => a.id === t.id)!).filter(Boolean);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top, paddingLeft: 20 }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingLeft: 20 }}>
       <View style={{ paddingRight: 20 }}>
         <TopBar onBack={() => router.back()} />
       </View>
@@ -46,8 +48,8 @@ export default function Guide() {
             <Tap key={t.key} onPress={() => setMode(t.key)}>
               {on ? (
                 <Grad colors={G.ink} diag style={TAB}>
-                  <Icon name={t.icon} size={17} color={C.white} />
-                  <T size={15} weight={700} color={C.white}>
+                  <Icon name={t.icon} size={17} color={C.onInk} />
+                  <T size={15} weight={700} color={C.onInk}>
                     {t.label}
                   </T>
                 </Grad>
@@ -75,9 +77,9 @@ export default function Guide() {
       >
         {list.map((a, i) => (
           <Tap key={a.id} onPress={() => router.push(`/guide/${a.id}`)}>
-            <Grad colors={G.card} style={CARD}>
+            <Grad colors={G.card} style={[CARD, cardSkin()]}>
               <Grad colors={G.accent} diag style={ART_ICON}>
-                <Icon name={a.icon} size={32} color={C.ink} />
+                <Icon name={a.icon} size={32} color={C.accentOn} />
               </Grad>
               <View style={{ flex: 1 }}>
                 <T size={12.5} weight={500} color={C.faint}>

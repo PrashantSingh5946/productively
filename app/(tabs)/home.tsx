@@ -6,24 +6,19 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Grad,
-  Row,
-  Segmented,
-  Sheet,
-  T,
-  Tap,
-} from '../../src/ui';
+import { CheckCoin, Grad, Overline, Row, Segmented, Sheet, T, Tap, rowSkin } from '../../src/ui';
 import { FabStack, RoutineCard, StreakRail, Timeline } from '../../src/components/HomeParts';
 import { Icon, IconName } from '../../src/icons';
-import { C, G } from '../../src/theme';
+import { C, DOCK_CLEARANCE, G } from '../../src/theme';
 import { fmtClock } from '../../src/data';
 import { useStore } from '../../src/store';
 import { useNow } from '../../src/useNow';
 
+import { useT } from '../../src/theming';
 export default function Home() {
+  useT();
   const insets = useSafeAreaInsets();
-  const { state, set, streakFor, toggleChecklistItem } = useStore();
+  const { state, streakFor, toggleChecklistItem } = useStore();
   const now = useNow(30_000);
   const [tab, setTab] = useState<'routine' | 'checklist'>('routine');
   const [addOpen, setAddOpen] = useState(false);
@@ -51,14 +46,14 @@ export default function Home() {
   const streak = streakFor('morning');
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 110 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: DOCK_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
         <Row style={{ justifyContent: 'space-between', paddingTop: 10 }}>
           <Tap onPress={() => setJumpOpen(true)}>
-            <Grad colors={G.card} style={GRID}>
+            <Grad colors={G.card} style={[GRID, rowSkin()]}>
               <Icon name="grid" size={21} color={C.text} />
             </Grad>
           </Tap>
@@ -93,7 +88,7 @@ export default function Home() {
         targetMinutes={tab === 'routine' && view === 'list' ? upcoming?.start : undefined}
         onTimer={() => upcoming && router.push(`/routine/${upcoming.id}`)}
         onAdd={() => setAddOpen(true)}
-        bottom={14}
+        bottom={insets.bottom + 118}
       />
 
       <AddSheet visible={addOpen} onClose={() => setAddOpen(false)} />
@@ -123,14 +118,17 @@ function ListView({
 
   return (
     <>
-      <T d size={27} weight={800} lh={35} style={{ marginTop: 20 }}>
+      <Overline style={{ marginTop: 22 }}>
+        {now.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+      </Overline>
+      <T d size={27} weight={800} lh={35} style={{ marginTop: 6 }}>
         {greeting(now.getHours())}, {state.profile.name}.{'\n'}
         {inWords(streak)} days and counting.
       </T>
 
       <Row style={{ justifyContent: 'space-between', marginTop: 20 }}>
         <Tap onPress={onFilter}>
-          <Grad colors={G.card} style={FILTER}>
+          <Grad colors={G.card} style={[FILTER, rowSkin()]}>
             <Icon name="filter" size={17} color={C.textSoft} />
             <T size={14} weight={600} color={C.textMid}>
               {filterAll ? 'Filter' : 'Today only'}
@@ -138,7 +136,7 @@ function ListView({
           </Grad>
         </Tap>
 
-        <View style={VIEW_TOGGLE}>
+        <View style={VIEW_TOGGLE()}>
           {(['list', 'clock'] as const).map((k) => {
             const on = (k === 'list') === (state.settings.homeView === 'list');
             return (
@@ -151,12 +149,12 @@ function ListView({
                 }
               >
                 {on ? (
-                  <Grad colors={G.chip} style={VIEW_ITEM}>
-                    <Icon name={k as IconName} size={19} color={C.text} />
-                  </Grad>
+                  <View style={[VIEW_ITEM, rowSkin(), { borderRadius: 999 }]}>
+                    <Icon name={k as IconName} size={19} color={C.ink} />
+                  </View>
                 ) : (
                   <View style={VIEW_ITEM}>
-                    <Icon name={k as IconName} size={19} color={C.ghost} />
+                    <Icon name={k as IconName} size={19} color={C.muted} />
                   </View>
                 )}
               </Tap>
@@ -201,11 +199,14 @@ function TimelineView({ nowMin }: { nowMin: number }) {
 
   return (
     <>
-      <Row style={{ justifyContent: 'space-between', marginTop: 20 }}>
-        <T d size={24} weight={800}>
-          {day}
-        </T>
-        <View style={VIEW_TOGGLE}>
+      <Row style={{ justifyContent: 'space-between', marginTop: 22 }}>
+        <View>
+          <Overline>Today</Overline>
+          <T d size={24} weight={800} style={{ marginTop: 4 }}>
+            {day}
+          </T>
+        </View>
+        <View style={VIEW_TOGGLE()}>
           {(['list', 'clock'] as const).map((k) => {
             const on = (k === 'list') === (state.settings.homeView === 'list');
             return (
@@ -218,12 +219,12 @@ function TimelineView({ nowMin }: { nowMin: number }) {
                 }
               >
                 {on ? (
-                  <Grad colors={G.chip} style={VIEW_ITEM}>
-                    <Icon name={k as IconName} size={19} color={C.text} />
-                  </Grad>
+                  <View style={[VIEW_ITEM, rowSkin(), { borderRadius: 999 }]}>
+                    <Icon name={k as IconName} size={19} color={C.ink} />
+                  </View>
                 ) : (
                   <View style={VIEW_ITEM}>
-                    <Icon name={k as IconName} size={19} color={C.ghost} />
+                    <Icon name={k as IconName} size={19} color={C.muted} />
                   </View>
                 )}
               </Tap>
@@ -255,7 +256,8 @@ function ChecklistView({
 
   return (
     <>
-      <T d size={27} weight={800} lh={35} style={{ marginTop: 20 }}>
+      <Overline style={{ marginTop: 22 }}>Checklists</Overline>
+      <T d size={27} weight={800} lh={35} style={{ marginTop: 6 }}>
         {'Nothing important\nleft behind.'}
       </T>
 
@@ -289,14 +291,8 @@ function ChecklistView({
               <View style={{ gap: 10, marginTop: 14 }}>
                 {g.items.map((it) => (
                   <Tap key={it.id} onPress={() => onToggle(g.id, it.id)}>
-                    <Grad colors={G.card} style={CHECK_ROW}>
-                      {it.done ? (
-                        <Grad colors={G.accent} diag style={BOX}>
-                          <Icon name="check" size={15} color={C.ink} />
-                        </Grad>
-                      ) : (
-                        <View style={[BOX, { borderWidth: 2, borderColor: C.ring }]} />
-                      )}
+                    <Grad colors={G.card} style={[CHECK_ROW, rowSkin()]}>
+                      <CheckCoin size={24} on={it.done} />
                       <T
                         size={15.5}
                         weight={it.done ? 500 : 600}
@@ -363,10 +359,10 @@ function AddSheet({ visible, onClose }: { visible: boolean; onClose: () => void 
                   first && { borderWidth: 1.5, borderColor: C.accentWashBorder },
                 ]}
               >
-                <View style={[OPT_ICON, !first && { backgroundColor: C.white }]}>
+                <View style={[OPT_ICON, !first && { backgroundColor: C.card }]}>
                   {first ? (
                     <Grad colors={G.accent} diag style={OPT_FILL}>
-                      <Icon name={o.icon} size={22} color={C.ink} />
+                      <Icon name={o.icon} size={22} color={C.accentOn} />
                     </Grad>
                   ) : (
                     <Icon name={o.icon} size={22} color={C.textMid} />
@@ -407,7 +403,7 @@ function JumpSheet({ visible, onClose }: { visible: boolean; onClose: () => void
               router.push(`/routine/${r.id}`);
             }}
           >
-            <Grad colors={G.card} style={JUMP}>
+            <Grad colors={G.card} style={[JUMP, rowSkin()]}>
               <Icon name="rows" size={20} color={C.textMid} />
               <T size={16} weight={700} style={{ flex: 1 }}>
                 {r.name}
@@ -419,7 +415,7 @@ function JumpSheet({ visible, onClose }: { visible: boolean; onClose: () => void
           </Tap>
         ))}
         {state.checklists.map((c) => (
-          <Grad key={c.id} colors={G.card} style={JUMP}>
+          <Grad key={c.id} colors={G.card} style={[JUMP, rowSkin()]}>
             <Icon name="check" size={20} color={C.textMid} />
             <T size={16} weight={700} style={{ flex: 1 }}>
               {c.title}
@@ -477,13 +473,13 @@ const FILTER = {
   borderRadius: 999,
 };
 
-const VIEW_TOGGLE = {
+const VIEW_TOGGLE = () => ({
   flexDirection: 'row' as const,
   padding: 4,
   borderRadius: 999,
   borderWidth: 1,
   borderColor: C.border,
-};
+});
 
 const VIEW_ITEM = {
   width: 44,
@@ -502,13 +498,6 @@ const CHECK_ROW = {
   borderRadius: 16,
 };
 
-const BOX = {
-  width: 23,
-  height: 23,
-  borderRadius: 7,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-};
 
 const OPTION = {
   flexDirection: 'row' as const,

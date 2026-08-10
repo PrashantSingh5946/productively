@@ -7,7 +7,9 @@ import { Button, Grad, Spacer, T } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { C, G } from '../../src/theme';
 
+import { useT } from '../../src/theming';
 export default function StreakStarted() {
+  useT();
   const insets = useSafeAreaInsets();
 
   return (

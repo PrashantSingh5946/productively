@@ -3,34 +3,37 @@ import React from 'react';
 import { Linking, ScrollView, Share, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Group, Row, RowItem, T, Tap } from '../../src/ui';
+import { Grad, Group, IconButton, Overline, Row, RowItem, T, Tap, cardSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
-import { C, G } from '../../src/theme';
+import { C, DOCK_CLEARANCE, G, IDENTITY } from '../../src/theme';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function Profile() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, streakFor } = useStore();
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: DOCK_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
         <Row style={{ justifyContent: 'space-between', paddingTop: 12 }}>
-          <T d size={30} weight={800}>
-            Profile
-          </T>
-          <Tap onPress={() => router.push('/settings')} hitSlop={12}>
-            <Icon name="gear" size={25} color={C.text} />
-          </Tap>
+          <View>
+            <Overline>Account</Overline>
+            <T d size={30} weight={800} style={{ marginTop: 4 }}>
+              Profile
+            </T>
+          </View>
+          <IconButton icon="gear" onPress={() => router.push('/settings')} size={42} />
         </Row>
 
         <Tap onPress={() => router.push('/profile/edit')}>
-          <Grad colors={G.card} style={HEADER}>
+          <Grad colors={G.card} style={[HEADER, cardSkin()]}>
             <View style={AVATAR}>
-              <Icon name="user" size={32} color="#8DAA9C" />
+              <Icon name="user" size={32} color={IDENTITY.avatarSageInk} />
             </View>
             <View style={{ flex: 1 }}>
               <Row gap={8}>
@@ -47,7 +50,7 @@ export default function Profile() {
         </Tap>
 
         <Tap onPress={() => router.push('/free')}>
-          <Grad colors={G.accentWash} diag style={FREE}>
+          <Grad colors={G.accentWash} diag style={FREE()}>
             <Icon name="spark" size={22} color={C.accentInkSoft} />
             <View style={{ flex: 1 }}>
               <T d size={17} weight={800} lh={21}>
@@ -68,10 +71,10 @@ export default function Profile() {
             onPress={() => router.push('/account')}
           />
           <RowItem
-            icon="shield"
+            icon="cloud"
             label="Backup & sync"
-            value={state.settings.backupOn ? 'On' : 'Off'}
-            onPress={() => router.push('/account')}
+            value={state.settings.backup.enabled ? 'On' : 'Off'}
+            onPress={() => router.push('/settings/backup')}
           />
         </Group>
 
@@ -133,12 +136,12 @@ const AVATAR = {
   width: 64,
   height: 64,
   borderRadius: 32,
-  backgroundColor: '#CFDED6',
+  backgroundColor: IDENTITY.avatarSage,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };
 
-const FREE = {
+const FREE = () => ({
   marginTop: 12,
   paddingVertical: 18,
   paddingHorizontal: 20,
@@ -148,4 +151,4 @@ const FREE = {
   flexDirection: 'row' as const,
   alignItems: 'center' as const,
   gap: 14,
-};
+});

@@ -3,14 +3,16 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Grad, Spacer, T, Tap } from '../../src/ui';
+import { Button, CheckCoin, Grad, Spacer, T, Tap, rowSkin, tintSkin } from '../../src/ui';
 import { StepHeader } from '../../src/components/OnboardingChrome';
 import { Icon } from '../../src/icons';
-import { C, G } from '../../src/theme';
+import { C, G, RADIUS } from '../../src/theme';
 import { INTENTS } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function Intent() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
   const [picked, setPicked] = useState<string[]>(state.profile.intents);
@@ -32,7 +34,7 @@ export default function Intent() {
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 22,
         paddingHorizontal: 22,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
       }}
     >
       <StepHeader progress={0.62} />
@@ -47,19 +49,36 @@ export default function Intent() {
       <View style={{ gap: 12, marginTop: 26 }}>
         {INTENTS.map((o) => {
           const on = picked.includes(o.id);
+          // Selected reads as the accent tint, not the accent fill — the fill
+          // is rationed to the one decisive action, which here is Next.
           const inner = (
             <View style={ROW}>
-              <Icon name={o.icon} size={20} color={on ? C.ink : C.muted} />
-              <T size={15.5} weight={600} lh={20} color={on ? C.ink : C.textMid}>
+              <Icon name={o.icon} size={20} color={on ? C.accentIcon : C.muted} />
+              <T
+                size={15.5}
+                weight={on ? 700 : 600}
+                lh={20}
+                color={on ? C.accentText : C.textMid}
+                style={{ flex: 1 }}
+              >
                 {o.label}
               </T>
+              <CheckCoin size={24} on={on} />
             </View>
           );
           return (
             <Tap key={o.id} onPress={() => toggle(o.id)}>
-              <Grad colors={on ? G.accent : G.card} diag={on} style={{ borderRadius: 16 }}>
-                {inner}
-              </Grad>
+              {on ? (
+                <Grad
+                  colors={G.accentTint}
+                  diag
+                  style={[{ borderRadius: RADIUS.tile }, tintSkin()]}
+                >
+                  {inner}
+                </Grad>
+              ) : (
+                <View style={[{ borderRadius: RADIUS.tile }, rowSkin()]}>{inner}</View>
+              )}
             </Tap>
           );
         })}

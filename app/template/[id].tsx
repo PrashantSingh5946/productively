@@ -3,14 +3,16 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Pill, Row, T, Tap } from '../../src/ui';
+import { Grad, IconButton, Pill, Row, T, Tap } from '../../src/ui';
 import { TaskRow } from '../../src/components/TaskRow';
 import { Icon } from '../../src/icons';
 import { C, G } from '../../src/theme';
 import { TEMPLATES, totalMinutes } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function TemplateDetail() {
+  useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { state, toggleSaved, addRoutineFromTemplate } = useStore();
@@ -18,7 +20,7 @@ export default function TemplateDetail() {
   const tpl = TEMPLATES.find((t) => t.id === String(id));
   if (!tpl) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top + 40, paddingHorizontal: 20 }}>
+      <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top + 40, paddingHorizontal: 20 }}>
         <T size={16} color={C.muted}>Template not found.</T>
       </View>
     );
@@ -27,9 +29,9 @@ export default function TemplateDetail() {
   const saved = state.savedTemplates.includes(tpl.id);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white }}>
+    <View style={{ flex: 1, backgroundColor: C.paper }}>
       <Grad
-        colors={['#FFD9C6', '#FFF1E8']}
+        colors={[C.accentTintTo, C.accentWash]}
         diag
         style={{
           height: 150 + insets.top,
@@ -38,13 +40,11 @@ export default function TemplateDetail() {
           justifyContent: 'center',
         }}
       >
-        <Tap
+        <IconButton
+          icon="chevL"
           onPress={() => router.back()}
-          hitSlop={14}
           style={{ position: 'absolute', left: 20, top: insets.top + 16 }}
-        >
-          <Icon name="chevL" size={26} color={C.accentInkDeep} />
-        </Tap>
+        />
         <Icon name={tpl.icon} size={64} color={tpl.iconColor} />
       </Grad>
 
@@ -80,8 +80,8 @@ export default function TemplateDetail() {
           paddingTop: 14,
           paddingBottom: 18 + insets.bottom,
           borderTopWidth: 1,
-          borderTopColor: '#F4EFE9',
-          backgroundColor: C.white,
+          borderTopColor: C.hairline,
+          backgroundColor: C.card,
         }}
       >
         <Tap onPress={() => toggleSaved(tpl.id)}>

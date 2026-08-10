@@ -1,35 +1,30 @@
 /** 8.2 Account & data. */
-import React, { useState } from 'react';
-import { Alert, ScrollView, Share, View } from 'react-native';
+import React, { useMemo } from 'react';
+import { Alert, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Grad, Group, Row, RowItem, Spacer, T, Tap, TopBar } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { C, G } from '../../src/theme';
 import { useStore } from '../../src/store';
+import { useBackup } from '../../src/backup/context';
+import { summarize } from '../../src/backup/archive';
+import { agoLabel, sizeLabel } from '../../src/backup/format';
 
+import { useT } from '../../src/theming';
 export default function Account() {
+  useT();
   const insets = useSafeAreaInsets();
-  const { state, set, reset } = useStore();
-  const [backedUpAgo] = useState('2 minutes ago');
+  const { state, reset } = useStore();
+  const backup = useBackup();
 
-  const taskCount = state.routines.reduce((s, r) => s + r.tasks.length, 0);
-
-  const exportData = async () => {
-    const payload = JSON.stringify(
-      {
-        exportedAt: new Date().toISOString(),
-        profile: state.profile,
-        routines: state.routines,
-        checklists: state.checklists,
-        notes: state.notes,
-        sessions: state.sessions,
-      },
-      null,
-      2
-    );
-    await Share.share({ message: payload, title: 'Productively export' }).catch(() => {});
-  };
+  // What the export would actually weigh, rather than a number on a mock-up.
+  const { summary, bytes } = useMemo(
+    () => ({ summary: summarize(state), bytes: JSON.stringify(state).length }),
+    [state]
+  );
+  const backedUpAgo = agoLabel(backup.meta.lastBackupAt);
+  const since = firstDay(state.sessions.map((s) => s.day));
 
   const confirmDelete = () =>
     Alert.alert(
@@ -49,7 +44,7 @@ export default function Account() {
     );
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top, paddingHorizontal: 20 }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
       <TopBar onBack={() => router.back()} />
 
       <ScrollView
@@ -62,27 +57,31 @@ export default function Account() {
 
         <Grad colors={G.inkDeep} diag style={HERO}>
           <Row gap={10}>
-            <Icon name="shield" size={18} color={C.accent} />
+            <Icon name="cloud" size={18} color={C.accent} />
             <T size={14} weight={700} color={C.accent}>
               LAST BACKUP · {backedUpAgo.toUpperCase()}
             </T>
           </Row>
-          <T d size={24} weight={800} lh={29} color={C.white} style={{ marginTop: 14 }}>
-            146 days of history
+          <T d size={24} weight={800} lh={29} color={C.onInk} style={{ marginTop: 14 }}>
+            {summary.days > 0
+              ? `${summary.days} ${summary.days === 1 ? 'day' : 'days'} of history`
+              : 'No history yet'}
           </T>
-          <T size={14} lh={21} color="rgba(255,255,255,0.6)" style={{ marginTop: 8 }}>
-            {state.routines.length} routines, {taskCount} tasks and {state.notes.length} notes.
-            Stored on this device, copied to your account each night.
+          <T size={14} lh={21} color={C.onInkSoft} style={{ marginTop: 8 }}>
+            {summary.routines} routines, {summary.tasks} tasks and {summary.notes} notes.
+            {backup.settings.enabled
+              ? ' Stored on this device, copied to your Drive on a schedule.'
+              : ' Stored on this device only.'}
           </T>
           <Row gap={8} style={{ marginTop: 18 }}>
-            <View style={DARK_PILL}>
-              <T size={12} weight={600} color="rgba(255,255,255,0.75)">
-                2.4 MB
+            <View style={darkPill()}>
+              <T size={12} weight={600} color={C.onInkSoft}>
+                {sizeLabel(bytes)}
               </T>
             </View>
-            <View style={DARK_PILL}>
-              <T size={12} weight={600} color="rgba(255,255,255,0.75)">
-                Since 14 Mar
+            <View style={darkPill()}>
+              <T size={12} weight={600} color={C.onInkSoft}>
+                {since ? `Since ${since}` : 'No sessions yet'}
               </T>
             </View>
           </Row>
@@ -96,23 +95,32 @@ export default function Account() {
                 Email
               </T>
               <T size={13.5} color={C.muted} style={{ marginTop: 5 }}>
-                p•••••@gmail.com
+                {backup.account?.email ?? 'Not signed in'}
               </T>
             </View>
           </Row>
 
           <RowItem
-            icon="shield"
+            icon="cloud"
             label="Back up & sync"
-            value={state.settings.backupOn ? `On · ${backedUpAgo.replace(' minutes ago', 'm ago')}` : 'Off'}
-            onPress={() =>
-              set((d) => {
-                d.settings.backupOn = !d.settings.backupOn;
-              })
-            }
+            value={backup.settings.enabled ? `On · ${backedUpAgo.toLowerCase()}` : 'Off'}
+            chevron
+            onPress={() => router.push('/settings/backup')}
           />
 
-          <RowItem icon="share" label="Export my data" chevron onPress={exportData} />
+          <RowItem
+            icon="share"
+            label="Export my data"
+            chevron
+            onPress={() => backup.exportToFile()}
+          />
+
+          <RowItem
+            icon="download"
+            label="Import a backup"
+            chevron
+            onPress={() => router.push('/settings/backup')}
+          />
         </Group>
 
         <View style={{ marginTop: 18, gap: 14, paddingHorizontal: 4 }}>
@@ -142,11 +150,21 @@ export default function Account() {
   );
 }
 
+/** Earliest recorded session, as "14 Mar". Null when nothing has been run. */
+function firstDay(days: string[]): string | null {
+  if (!days.length) return null;
+  const earliest = days.slice().sort()[0];
+  const d = new Date(`${earliest}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+
 const HERO = { marginTop: 22, padding: 22, borderRadius: 22 };
 
-const DARK_PILL = {
+/** A factory, not a const — `onInkWash` flips with the theme. */
+const darkPill = () => ({
   paddingVertical: 7,
   paddingHorizontal: 13,
   borderRadius: 999,
-  backgroundColor: 'rgba(255,255,255,0.1)',
-};
+  backgroundColor: C.onInkWash,
+});

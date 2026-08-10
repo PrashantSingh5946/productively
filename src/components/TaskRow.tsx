@@ -77,17 +77,17 @@ export function TaskRow({
           {editing ? (
             <Row gap={10}>
               <Tap onPress={() => onMove?.(-1)} hitSlop={8}>
-                <View style={[STEP, { transform: [{ rotate: '180deg' }] }]}>
+                <View style={[STEP(), { transform: [{ rotate: '180deg' }] }]}>
                   <Icon name="chevD" size={16} color={C.textMid} />
                 </View>
               </Tap>
               <Tap onPress={() => onMove?.(1)} hitSlop={8}>
-                <View style={STEP}>
+                <View style={STEP()}>
                   <Icon name="chevD" size={16} color={C.textMid} />
                 </View>
               </Tap>
               <Tap onPress={onRemove} hitSlop={8}>
-                <View style={[STEP, { backgroundColor: '#FBE6E6' }]}>
+                <View style={[STEP(), { backgroundColor: TASK_TONES.pill.bg }]}>
                   <Icon name="x" size={15} color={C.danger} />
                 </View>
               </Tap>
@@ -106,14 +106,14 @@ export function TaskRow({
   );
 }
 
-const STEP = {
+const STEP = () => ({
   width: 28,
   height: 28,
   borderRadius: 14,
-  backgroundColor: C.white,
+  backgroundColor: C.card,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-};
+});
 
 /** The hollow ring that marks an unstarted task. */
 export function EmptyCheck() {

@@ -13,7 +13,9 @@ import { C, G } from '../../src/theme';
 import { FIRST_ROUTINE_TASKS, Task, fmtClock, totalMinutes } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function FirstRoutine() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
   const [tasks, setTasks] = useState<Task[]>(FIRST_ROUTINE_TASKS);
@@ -46,7 +48,7 @@ export default function FirstRoutine() {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 20,
         paddingHorizontal: 20,
@@ -81,8 +83,8 @@ export default function FirstRoutine() {
 
       {tip ? (
         <Grad colors={G.ink} diag style={TIP}>
-          <View style={ARROW} />
-          <T size={14} lh={20} color={C.white} style={{ paddingRight: 24 }}>
+          <View style={ARROW()} />
+          <T size={14} lh={20} color={C.onInk} style={{ paddingRight: 24 }}>
             We've prepared your first routine. Reorder or remove anything that doesn't fit.
           </T>
           <Tap onPress={() => setTip(false)} hitSlop={10} style={CLOSE}>
@@ -96,7 +98,7 @@ export default function FirstRoutine() {
       <Row gap={14}>
         <Tap onPress={finish} style={{ flex: 1 }}>
           <Grad colors={G.accent} diag style={CTA}>
-            <Icon name="play" size={18} color={C.ink} />
+            <Icon name="play" size={18} color={C.accentOn} />
             <T d size={17} weight={700}>
               Done at {fmtClock(end)}
             </T>
@@ -104,7 +106,7 @@ export default function FirstRoutine() {
         </Tap>
         <Tap onPress={() => setTasks((t) => [...t, EXTRA])}>
           <Grad colors={G.ink} diag style={FAB}>
-            <Icon name="plus" size={24} color={C.white} />
+            <Icon name="plus" size={24} color={C.onInk} />
           </Grad>
         </Tap>
       </Row>
@@ -130,7 +132,7 @@ const TIP = {
   borderRadius: 16,
 };
 
-const ARROW = {
+const ARROW = () => ({
   position: 'absolute' as const,
   top: -7,
   right: 44,
@@ -139,7 +141,7 @@ const ARROW = {
   backgroundColor: C.inkFrom,
   transform: [{ rotate: '45deg' }],
   borderRadius: 3,
-};
+});
 
 const CLOSE = { position: 'absolute' as const, top: 16, right: 16 };
 

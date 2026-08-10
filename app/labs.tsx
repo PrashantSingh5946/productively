@@ -11,17 +11,19 @@ import { Icon } from '../src/icons';
 import { C, G } from '../src/theme';
 import { useStore } from '../src/store';
 
+import { useT } from '../src/theming';
 const EXPERIMENTS = [
   { key: 'statusBarTimer', label: 'Status bar timer', body: 'Keep the countdown visible outside the app.' },
   { key: 'landscape', label: 'Landscape timer', body: 'Rotate the dial for a desk-side run.' },
 ] as const;
 
 export default function Labs() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top, paddingHorizontal: 20 }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
       <TopBar onBack={() => router.back()} />
 
       <T d size={30} weight={800} style={{ marginTop: 16 }}>
@@ -59,9 +61,9 @@ export default function Labs() {
         ))}
       </Group>
 
-      <Grad colors={G.accentWash} diag style={NOTE}>
+      <Grad colors={G.accentWash} diag style={NOTE()}>
         <Icon name="flask" size={20} color={C.accentInkSoft} />
-        <T size={13.5} lh={20} color="#7D3720" style={{ flex: 1 }}>
+        <T size={13.5} lh={20} color={C.accentText} style={{ flex: 1 }}>
           Next up: the routine editor, a dark pass across every screen, and home-screen widgets.
         </T>
       </Grad>
@@ -69,7 +71,7 @@ export default function Labs() {
   );
 }
 
-const NOTE = {
+const NOTE = () => ({
   marginTop: 18,
   paddingVertical: 16,
   paddingHorizontal: 18,
@@ -78,4 +80,4 @@ const NOTE = {
   borderColor: C.accentWashBorder,
   flexDirection: 'row' as const,
   gap: 12,
-};
+});

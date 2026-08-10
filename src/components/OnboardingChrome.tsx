@@ -1,34 +1,44 @@
 /**
- * The back-chevron + progress-rail header shared by onboarding steps 1.5–1.9,
+ * The back button + progress-rail header shared by onboarding steps 1.5–1.9,
  * and the wheel column used by the two time pickers.
  */
 import React from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
-import { Grad, Row, T, Tap } from '../ui';
-import { Icon } from '../icons';
-import { C, G } from '../theme';
+import { IconButton, Row, T, Tap, rowSkin } from '../ui';
+import { C, RADIUS } from '../theme';
+import { useT } from '../theming';
 
 export function StepHeader({ progress }: { progress: number }) {
+  const t = useT();
   return (
     <Row gap={16} style={{ paddingTop: 14 }}>
-      <Tap onPress={() => router.back()} hitSlop={12}>
-        <Icon name="chevL" size={24} color={C.faint} />
-      </Tap>
-      <Grad colors={G.well} style={{ flex: 1, height: 6, borderRadius: 3, overflow: 'hidden' }}>
-        <Grad
-          colors={G.accent}
-          diag
-          style={{ width: `${Math.round(progress * 100)}%`, height: '100%' }}
+      <IconButton icon="chevL" onPress={() => router.back()} size={40} glyph={20} />
+      <View
+        style={{
+          flex: 1,
+          height: 6,
+          borderRadius: 3,
+          overflow: 'hidden',
+          backgroundColor: t.trackRing,
+        }}
+      >
+        <View
+          style={{
+            width: `${Math.round(progress * 100)}%`,
+            height: '100%',
+            backgroundColor: t.accent,
+          }}
         />
-      </Grad>
+      </View>
     </Row>
   );
 }
 
 /**
- * A five-row wheel. The middle row is the selection; rows outside the value's
- * range are rendered invisible so columns stay aligned, as on the board.
+ * A five-row wheel. The selected row is a raised white card; its neighbours
+ * fade out through muted and faint. Rows outside the value's range render
+ * invisible so the columns stay aligned, as on the board.
  */
 export function Wheel({
   values,
@@ -41,6 +51,7 @@ export function Wheel({
   onChange: (i: number) => void;
   width?: number;
 }) {
+  const t = useT();
   const rows = [-2, -1, 0, 1, 2].map((d) => {
     const i = index + d;
     const has = i >= 0 && i < values.length;
@@ -48,29 +59,32 @@ export function Wheel({
   });
 
   return (
-    <View style={{ alignItems: 'center', gap: 14 }}>
+    <View style={{ alignItems: 'center', gap: 12 }}>
       {rows.map(({ d, i, has, label }) =>
         d === 0 ? (
           <Tap key={d} onPress={() => onChange(i)}>
-            <Grad
-              colors={G.well}
-              style={{
-                paddingVertical: 16,
-                paddingHorizontal: width,
-                borderRadius: 14,
-              }}
+            <View
+              style={[
+                {
+                  minHeight: 44,
+                  paddingVertical: 14,
+                  paddingHorizontal: width,
+                  borderRadius: RADIUS.tile,
+                },
+                rowSkin(),
+              ]}
             >
-              <T size={26} weight={600} color={C.ink}>
+              <T size={26} weight={700} color={t.ink}>
                 {label}
               </T>
-            </Grad>
+            </View>
           </Tap>
         ) : (
-          <Tap key={d} onPress={() => has && onChange(i)} disabled={!has}>
+          <Tap key={d} onPress={() => has && onChange(i)} disabled={!has} hitSlop={10}>
             <T
               size={22}
               weight={500}
-              color={Math.abs(d) === 1 ? C.faint : C.wisp}
+              color={Math.abs(d) === 1 ? C.muted : C.faint}
               style={{ opacity: has ? 1 : 0 }}
             >
               {label}

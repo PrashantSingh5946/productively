@@ -3,18 +3,19 @@
  * 3.2 settle · 3.3 timer · 3.4 overrun · 3.5 complete.
  * One screen holds all three phases so the run never loses its state.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import * as Haptics from 'expo-haptics';
-import { Button, Dial, Grad, Row, Spacer, T, Tap } from '../../src/ui';
+import { Button, Dial, Grad, IconButton, Row, Spacer, T, Tap, rowSkin } from '../../src/ui';
 import { Icon, MoodFace } from '../../src/icons';
-import { C, G, TASK_TONES } from '../../src/theme';
+import { C, G, SHADOW, TASK_TONES } from '../../src/theme';
 import { Routine, Task, mmss, totalMinutes } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 type Result = { taskId: string; spent: number; skipped: boolean };
 
 const QUICK: Routine = {
@@ -28,6 +29,7 @@ const QUICK: Routine = {
 };
 
 export default function Run() {
+  useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { routine, state, finishRun, addNote, streakFor } = useStore();
@@ -91,7 +93,7 @@ export default function Run() {
 
   if (!r) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top + 40, paddingHorizontal: 24 }}>
+      <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top + 40, paddingHorizontal: 24 }}>
         <T size={16} color={C.muted}>That routine is no longer here.</T>
         <Button label="Back" onPress={() => router.back()} style={{ marginTop: 20 }} />
       </View>
@@ -182,7 +184,7 @@ function Settle({ firstTask, onStart }: { firstTask?: Task; onStart: () => void 
     <View
       style={{
         flex: 1,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
         alignItems: 'center',
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 34,
@@ -198,7 +200,7 @@ function Settle({ firstTask, onStart }: { firstTask?: Task; onStart: () => void 
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <Grad
-          colors={['#FFD0B8', '#FFE6D8', '#FFF6F0']}
+          colors={[C.accentTintBorder, C.accentTintTo, C.accentWash]}
           style={{
             width: 250,
             height: 250,
@@ -285,9 +287,7 @@ function Running({
   const Body = (
     <>
       <Row style={{ justifyContent: 'space-between', paddingTop: 12 }}>
-        <Tap onPress={onBack} hitSlop={12}>
-          <Icon name="chevL" size={24} color={over ? C.ghost : C.faint} />
-        </Tap>
+        <IconButton icon="chevL" onPress={onBack} size={40} glyph={20} />
         <T size={13} weight={600} color={C.muted}>
           Task {idx + 1} of {routine.tasks.length}
         </T>
@@ -299,7 +299,7 @@ function Running({
                 width: 4.5,
                 height: 4.5,
                 borderRadius: 3,
-                backgroundColor: over ? '#DED5CD' : C.faint,
+                backgroundColor: over ? C.stoneDeep : C.faint,
               }}
             />
           ))}
@@ -311,7 +311,7 @@ function Running({
           i <= idx ? (
             <Grad key={t.id} colors={G.accent} diag style={SEG} />
           ) : (
-            <Grad key={t.id} colors={over ? ['#F3ECE5', '#F3ECE5'] : G.well} style={SEG} />
+            <Grad key={t.id} colors={over ? [C.stone, C.stone] : G.well} style={SEG} />
           )
         )}
       </Row>
@@ -322,11 +322,11 @@ function Running({
 
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <Dial
-          size={272}
-          thickness={18}
+          size={280}
+          thickness={15}
           progress={progress}
           over={over}
-          inner={over ? '#FFF2E9' : C.white}
+          inner={over ? C.accentWash : C.card}
         >
           <View style={[BIG_ICON, { backgroundColor: tone.bg }]}>
             <Icon name={task.icon} size={36} color={tone.fg} />
@@ -347,7 +347,7 @@ function Running({
               over by {overMin} minute{overMin === 1 ? '' : 's'}
             </T>
           ) : (
-            <Grad colors={G.card} style={NUDGE}>
+            <Grad colors={G.card} style={[NUDGE, rowSkin()]}>
               <Tap onPress={() => onNudge(-1)} hitSlop={10}>
                 <T size={12.5} weight={600} color={C.textSoft}>
                   –
@@ -371,8 +371,8 @@ function Running({
           <Icon name={paused ? 'play' : 'pause'} size={26} color={C.faint} />
         </Tap>
         <Tap onPress={onDone}>
-          <Grad colors={G.ink} diag style={MAIN_BTN}>
-            <Icon name="check" size={32} color={C.white} />
+          <Grad colors={G.ink} diag style={MAIN_BTN()}>
+            <Icon name="check" size={32} color={C.onInk} />
           </Grad>
         </Tap>
         <Tap onPress={onSkip} hitSlop={14}>
@@ -381,7 +381,7 @@ function Running({
       </Row>
 
       {cfg.nextTask && next ? (
-        <Grad colors={over ? ['#FFF6F0', '#FFE9DC'] : G.card} diag={over} style={NEXT}>
+        <Grad colors={over ? G.tintSoft : G.card} diag={over} style={NEXT}>
           <T size={12} weight={600} color={C.ghost}>
             NEXT
           </T>
@@ -416,7 +416,7 @@ function Running({
       {Body}
     </Grad>
   ) : (
-    <View style={[pad, { backgroundColor: C.white }]}>{Body}</View>
+    <View style={[pad, { backgroundColor: C.paper }]}>{Body}</View>
   );
 }
 
@@ -436,18 +436,14 @@ const NUDGE = {
   paddingHorizontal: 12,
   borderRadius: 999,
 };
-const MAIN_BTN = {
+const MAIN_BTN = () => ({
   width: 74,
   height: 74,
   borderRadius: 37,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-  shadowColor: C.text,
-  shadowOpacity: 0.28,
-  shadowRadius: 24,
-  shadowOffset: { width: 0, height: 10 },
-  elevation: 8,
-};
+  boxShadow: SHADOW.fab,
+});
 const NEXT = {
   flexDirection: 'row' as const,
   alignItems: 'center' as const,
@@ -525,7 +521,7 @@ function Complete({
         </Row>
 
         {moodEnabled ? (
-          <View style={PANEL}>
+          <View style={PANEL()}>
             <T size={16} weight={700}>
               How did that feel?
             </T>
@@ -536,11 +532,11 @@ function Complete({
                   <Tap key={lvl} onPress={() => setMood(lvl)}>
                     {on ? (
                       <Grad colors={G.accent} diag style={FACE}>
-                        <MoodFace level={lvl} size={28} color={C.ink} />
+                        <MoodFace level={lvl} size={28} color={C.accentOn} />
                       </Grad>
                     ) : (
-                      <View style={[FACE, { backgroundColor: FACE_BG[lvl] }]}>
-                        <MoodFace level={lvl} size={26} color={FACE_FG[lvl]} />
+                      <View style={[FACE, { backgroundColor: faceBg()[lvl] }]}>
+                        <MoodFace level={lvl} size={26} color={faceFg()[lvl]} />
                       </View>
                     )}
                   </Tap>
@@ -550,7 +546,7 @@ function Complete({
           </View>
         ) : null}
 
-        <View style={PANEL}>
+        <View style={PANEL()}>
           <Tap onPress={() => setWriting((w) => !w)}>
             <Row gap={10}>
               <Icon name="note" size={18} color={C.muted} />
@@ -569,7 +565,7 @@ function Complete({
               autoFocus
               placeholder="What worked, what ran long…"
               placeholderTextColor={C.ghost}
-              style={INPUT}
+              style={INPUT()}
             />
           ) : (
             <T size={13.5} lh={20} color={note ? C.textMid : C.ghost} style={{ marginTop: 10 }}>
@@ -591,7 +587,7 @@ function Complete({
 
 function Stat({ big, sub, color }: { big: string; sub: string; color?: string }) {
   return (
-    <View style={STAT}>
+    <View style={STAT()}>
       <T d size={24} weight={800} color={color}>
         {big}
       </T>
@@ -618,32 +614,28 @@ function suggestion(results: Result[], routine: Routine) {
   return 'Nothing overran. Worth writing down what made today easy.';
 }
 
-const FACE_BG = ['#FDEFE8', '#FFEEE6', '#FFE0CF', '#FFE0CF', '#FFE0CF'];
-const FACE_FG = ['#DCC0B2', '#E0B6A2', '#D8A288', '#D8A288', '#D8A288'];
+const faceBg = () => [C.accentWash, C.accentTintFrom, C.accentTintTo, C.accentTintTo, C.accentTintTo];
+const faceFg = () => [C.faint, C.accentIcon, C.accentText, C.accentText, C.accentText];
 
-const STAT = {
+const STAT = () => ({
   flex: 1,
   padding: 18,
   borderRadius: 20,
-  backgroundColor: C.white,
-  shadowColor: '#000',
-  shadowOpacity: 0.04,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 1,
-};
+  backgroundColor: C.card,
+  borderWidth: 1,
+  borderColor: C.hairline,
+  boxShadow: SHADOW.card,
+});
 
-const PANEL = {
+const PANEL = () => ({
   marginTop: 16,
   padding: 20,
   borderRadius: 22,
-  backgroundColor: C.white,
-  shadowColor: '#000',
-  shadowOpacity: 0.04,
-  shadowRadius: 10,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 1,
-};
+  backgroundColor: C.card,
+  borderWidth: 1,
+  borderColor: C.hairline,
+  boxShadow: SHADOW.card,
+});
 
 const FACE = {
   width: 52,
@@ -653,7 +645,7 @@ const FACE = {
   justifyContent: 'center' as const,
 };
 
-const INPUT = {
+const INPUT = () => ({
   marginTop: 12,
   minHeight: 72,
   fontFamily: 'Instrument_400Regular',
@@ -661,4 +653,4 @@ const INPUT = {
   lineHeight: 22,
   color: C.textMid,
   textAlignVertical: 'top' as const,
-};
+});

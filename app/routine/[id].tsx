@@ -10,16 +10,18 @@ import { C, G } from '../../src/theme';
 import { daysLabel, fmtClock, totalMinutes } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function RoutineDetail() {
+  useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
-  const { routine, streakFor, moveTask, removeTask, addTasksToRoutine } = useStore();
+  const { routine, streakFor, moveTask, removeTask } = useStore();
   const [sel, setSel] = useState<string | null>(null);
 
   const r = routine(String(id));
   if (!r) {
     return (
-      <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top + 20, paddingHorizontal: 20 }}>
+      <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top + 20, paddingHorizontal: 20 }}>
         <TopBar onBack={() => router.back()} />
         <T size={16} color={C.muted} style={{ marginTop: 24 }}>
           That routine is no longer here.
@@ -35,7 +37,7 @@ export default function RoutineDetail() {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 20,
         paddingHorizontal: 20,
@@ -77,7 +79,7 @@ export default function RoutineDetail() {
       <Row gap={14}>
         <Tap onPress={() => router.push(`/run/${r.id}`)} style={{ flex: 1 }}>
           <Grad colors={G.accent} diag style={CTA}>
-            <Icon name="play" size={18} color={C.ink} />
+            <Icon name="play" size={18} color={C.accentOn} />
             <T d size={17} weight={700}>
               Done at {fmtClock(end)}
             </T>
@@ -89,7 +91,7 @@ export default function RoutineDetail() {
           }
         >
           <Grad colors={G.ink} diag style={FAB}>
-            <Icon name="plus" size={24} color={C.white} />
+            <Icon name="plus" size={24} color={C.onInk} />
           </Grad>
         </Tap>
       </Row>

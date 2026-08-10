@@ -7,10 +7,12 @@ import { Button, Row, T } from '../../src/ui';
 import { StepHeader, Wheel } from '../../src/components/OnboardingChrome';
 import { HOURS, MERIDIEM, MINUTES, to24 } from './wake';
 import { Icon } from '../../src/icons';
-import { C } from '../../src/theme';
+import { C, TASK_TONES } from '../../src/theme';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function Sleep() {
+  useT();
   const insets = useSafeAreaInsets();
   const { set } = useStore();
   const [h, setH] = useState(6); // 10
@@ -31,7 +33,7 @@ export default function Sleep() {
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 22,
         paddingHorizontal: 22,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
       }}
     >
       <StepHeader progress={0.36} />
@@ -40,7 +42,7 @@ export default function Sleep() {
         <T d size={30} weight={800} lh={37} center style={{ flexShrink: 1 }}>
           When would you like to fall asleep?
         </T>
-        <Icon name="moon" size={26} color="#8A807A" />
+        <Icon name="moon" size={26} color={TASK_TONES.moon.fg} />
       </Row>
       <T size={15} lh={21} center color={C.muted} style={{ marginTop: 12 }}>
         We'll suggest a routine that suits your evenings.

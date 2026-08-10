@@ -3,15 +3,17 @@ import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Row, T, Tap } from '../../src/ui';
+import { Grad, Overline, Row, T, Tap, cardSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
-import { C, G, TASK_TONES } from '../../src/theme';
+import { C, DOCK_CLEARANCE, G, IDENTITY, TASK_TONES } from '../../src/theme';
 import { RECOMMENDED_TASKS, RESET_CARDS, TEMPLATES, Template } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 const CATEGORIES: Template['category'][] = ['Morning', 'Evening', 'Focus', 'Rest'];
 
 export default function Explore() {
+  useT();
   const insets = useSafeAreaInsets();
   const { addTasksToRoutine, state } = useStore();
   const [cat, setCat] = useState<Template['category']>('Morning');
@@ -21,16 +23,19 @@ export default function Explore() {
   const list = TEMPLATES.filter((t) => t.category === cat);
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingLeft: 20, paddingBottom: 28 }}
+        contentContainerStyle={{ paddingLeft: 20, paddingBottom: DOCK_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
         <Row style={{ justifyContent: 'space-between', paddingTop: 12, paddingRight: 20 }}>
-          <T d size={30} weight={800}>
-            Explore
-          </T>
-          <View style={PICKS}>
+          <View>
+            <Overline>Library</Overline>
+            <T d size={30} weight={800} style={{ marginTop: 4 }}>
+              Explore
+            </T>
+          </View>
+          <View style={PICKS()}>
             <T size={14} weight={700}>
               Picks
             </T>
@@ -51,7 +56,7 @@ export default function Explore() {
                   )
                 }
               >
-                <Row gap={8} style={BLUE_CHIP}>
+                <Row gap={8} style={BLUE_CHIP()}>
                   <Icon name={label === 'Timer guide' ? 'clock' : 'bookmark'} size={17} color={C.info} />
                   <T size={14} weight={700} color={C.info}>
                     {label}
@@ -73,10 +78,10 @@ export default function Explore() {
         >
           {RESET_CARDS.map((r) => (
             <Tap key={r.id} onPress={() => router.push('/guide')}>
-              <View style={[RESET, { backgroundColor: r.bg }]}>
+              <View style={[RESET, { backgroundColor: C.reset[r.tone].bg }]}>
                 <View style={{ flex: 1 }}>
-                  <View style={[TAG, { backgroundColor: r.tagBg }]}>
-                    <T size={11} weight={700} color={C.white}>
+                  <View style={[TAG, { backgroundColor: C.reset[r.tone].tag }]}>
+                    <T size={11} weight={700} color={C.reset[r.tone].onTag}>
                       RESET
                     </T>
                   </View>
@@ -84,7 +89,7 @@ export default function Explore() {
                     {r.title}
                   </T>
                 </View>
-                <View style={[RESET_ICON, { backgroundColor: r.iconBg }]}>
+                <View style={[RESET_ICON, { backgroundColor: C.reset[r.tone].iconBg }]}>
                   <Icon name={r.icon} size={28} color={r.iconColor} />
                 </View>
               </View>
@@ -112,8 +117,8 @@ export default function Explore() {
                   setAdded((a) => [...a, t.id]);
                 }}
               >
-                <Grad colors={G.card} style={REC}>
-                  <View style={REC_ICON}>
+                <Grad colors={G.card} style={[REC, cardSkin()]}>
+                  <View style={REC_ICON()}>
                     <Icon name={t.icon} size={20} color={TASK_TONES[t.tone].fg} />
                   </View>
                   <T size={14.5} weight={600} lh={18}>
@@ -141,7 +146,7 @@ export default function Explore() {
               <Tap key={c} onPress={() => setCat(c)}>
                 {on ? (
                   <Grad colors={G.ink} diag style={CAT}>
-                    <T size={14} weight={700} color={C.white}>
+                    <T size={14} weight={700} color={C.onInk}>
                       {c}
                     </T>
                   </Grad>
@@ -160,8 +165,8 @@ export default function Explore() {
         <View style={{ gap: 11, marginTop: 16, paddingRight: 20 }}>
           {list.map((t) => (
             <Tap key={t.id} onPress={() => router.push(`/template/${t.id}`)}>
-              <Grad colors={G.card} style={TPL}>
-                <View style={TPL_ICON}>
+              <Grad colors={G.card} style={[TPL, cardSkin()]}>
+                <View style={TPL_ICON()}>
                   <Icon name={t.icon} size={24} color={t.iconColor} />
                 </View>
                 <View style={{ flex: 1 }}>
@@ -180,8 +185,8 @@ export default function Explore() {
                           </T>
                         </Grad>
                       ) : (
-                        <View style={[BADGE, { backgroundColor: '#E3F2EA' }]}>
-                          <T size={10.5} weight={700} color="#4A8A6C">
+                        <View style={[BADGE, { backgroundColor: IDENTITY.badgeMint }]}>
+                          <T size={10.5} weight={700} color={C.goodInk}>
                             {t.badge.label}
                           </T>
                         </View>
@@ -196,7 +201,7 @@ export default function Explore() {
         </View>
 
         <Tap onPress={() => router.push('/task-picker')}>
-          <Row gap={10} style={MORE_TASKS}>
+          <Row gap={10} style={MORE_TASKS()}>
             <Icon name="plus" size={18} color={C.textMid} />
             <T size={15} weight={700} color={C.textMid}>
               Find tasks that fit you
@@ -208,7 +213,7 @@ export default function Explore() {
   );
 }
 
-const PICKS = {
+const PICKS = () => ({
   flexDirection: 'row' as const,
   alignItems: 'center' as const,
   gap: 7,
@@ -217,14 +222,14 @@ const PICKS = {
   borderRadius: 999,
   borderWidth: 1.5,
   borderColor: C.border,
-};
+});
 
-const BLUE_CHIP = {
+const BLUE_CHIP = () => ({
   paddingVertical: 12,
   paddingHorizontal: 18,
   borderRadius: 14,
   backgroundColor: C.infoBg,
-};
+});
 
 const RESET = {
   width: 300,
@@ -256,14 +261,14 @@ const REC = {
   borderRadius: 999,
 };
 
-const REC_ICON = {
+const REC_ICON = () => ({
   width: 38,
   height: 38,
   borderRadius: 12,
-  backgroundColor: C.white,
+  backgroundColor: C.card,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-};
+});
 
 const CAT = { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 999 };
 
@@ -276,18 +281,18 @@ const TPL = {
   borderRadius: 20,
 };
 
-const TPL_ICON = {
+const TPL_ICON = () => ({
   width: 46,
   height: 46,
   borderRadius: 15,
-  backgroundColor: C.white,
+  backgroundColor: C.card,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-};
+});
 
 const BADGE = { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 6 };
 
-const MORE_TASKS = {
+const MORE_TASKS = () => ({
   marginTop: 18,
   marginRight: 20,
   padding: 18,
@@ -296,4 +301,4 @@ const MORE_TASKS = {
   borderColor: C.borderStrong,
   borderStyle: 'dashed' as const,
   justifyContent: 'center' as const,
-};
+});

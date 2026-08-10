@@ -3,30 +3,32 @@ import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Group, Row, RowItem, T, Tap, Toggle, TopBar } from '../../src/ui';
+import { Grad, Group, Row, RowItem, T, Tap, Toggle, TopBar } from '../../src/ui';
 import { WheelSheet } from '../../src/components/WheelSheet';
+import { ThemeSheet } from '../../src/components/ThemeSheet';
 import { Icon } from '../../src/icons';
-import { C } from '../../src/theme';
-import { fmtClock } from '../../src/data';
+import { ACCENTS, C, accentSwatch } from '../../src/theme';
+import { APP_ICONS, fmtClock } from '../../src/data';
 import { useStore } from '../../src/store';
 
-type Field = 'language' | 'theme' | 'timeFormat' | 'weekStart' | 'endDay' | null;
+import { useT } from '../../src/theming';
+type Field = 'language' | 'timeFormat' | 'weekStart' | 'endDay' | null;
 
 const LANGUAGES = ['English', 'Deutsch', 'Español', 'Français', 'हिन्दी', '日本語'];
-const THEMES = ['Light', 'Dark', 'System'];
 const FORMATS = ['12h (1:00pm)', '24h (13:00)'];
 const WEEK = ['Sun', 'Mon'];
 const END_HOURS = [0, 1, 2, 3, 4, 5, 6].map((h) => fmtClock(h * 60));
 
 export default function Settings() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
   const s = state.settings;
   const [field, setField] = useState<Field>(null);
+  const [themeOpen, setThemeOpen] = useState(false);
 
   const config: Record<Exclude<Field, null>, { title: string; options: string[]; value: string }> = {
     language: { title: 'Language', options: LANGUAGES, value: s.language },
-    theme: { title: 'Theme', options: THEMES, value: s.theme },
     timeFormat: { title: 'Time format', options: FORMATS, value: FORMATS[s.timeFormat12 ? 0 : 1] },
     weekStart: { title: 'Start week on', options: WEEK, value: s.weekStart },
     endDay: { title: 'End day at', options: END_HOURS, value: fmtClock(s.endDayAt) },
@@ -37,9 +39,6 @@ export default function Settings() {
       switch (field) {
         case 'language':
           d.settings.language = v;
-          break;
-        case 'theme':
-          d.settings.theme = v as typeof d.settings.theme;
           break;
         case 'timeFormat':
           d.settings.timeFormat12 = v === FORMATS[0];
@@ -56,7 +55,7 @@ export default function Settings() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top, paddingHorizontal: 20 }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
       <TopBar onBack={() => router.back()} />
 
       <ScrollView
@@ -69,11 +68,31 @@ export default function Settings() {
 
         <Group title="System" style={{ marginTop: 22 }}>
           <RowItem label="Language" value={s.language} onPress={() => setField('language')} />
-          <RowItem label="Theme" value={s.theme} onPress={() => setField('theme')} />
+          <RowItem
+            label="Theme"
+            value={`${ACCENTS[s.accent].label} · ${s.theme}`}
+            onPress={() => setThemeOpen(true)}
+            right={
+              <Grad
+                colors={[accentSwatch(s.accent).from, accentSwatch(s.accent).to]}
+                diag
+                style={{ width: 20, height: 20, borderRadius: 10, marginRight: 10 }}
+              />
+            }
+          />
           <RowItem
             label="App icon"
             value={iconName(s.appIcon)}
             onPress={() => router.push('/settings/app-icon')}
+          />
+        </Group>
+
+        <Group title="Data" style={{ marginTop: 14 }}>
+          <RowItem
+            label="Backup & sync"
+            value={s.backup.enabled ? 'On' : 'Off'}
+            chevron
+            onPress={() => router.push('/settings/backup')}
           />
         </Group>
 
@@ -130,6 +149,8 @@ export default function Settings() {
         </Group>
       </ScrollView>
 
+      <ThemeSheet visible={themeOpen} onClose={() => setThemeOpen(false)} />
+
       {field ? (
         <WheelSheet
           visible
@@ -175,13 +196,4 @@ function HelpRow({
   );
 }
 
-const iconName = (id: string) =>
-  ({
-    default: 'Default',
-    paper: 'Paper',
-    gentle: 'Gentle day',
-    deep: 'Deep immersion',
-    calm: 'Calm mind',
-    clay: 'Clay',
-    soft: 'Soft start',
-  })[id] ?? 'Default';
+const iconName = (id: string) => APP_ICONS.find((i) => i.id === id)?.name ?? 'Default';

@@ -1,6 +1,13 @@
 /**
- * Shared primitives. Everything the screens draw is assembled from these so the
- * board's card / pill / ring language stays consistent across 50-odd screens.
+ * Shared primitives — the v2 shape, elevation and colour language in one place.
+ *
+ * Everything the screens draw is assembled from these, so restyling the app is
+ * a change here rather than 42 changes out there. Two rules keep that true:
+ *   1. no raw hex — every colour resolves through a token in ./theme;
+ *   2. no module-scope style object may capture a token, because the token
+ *      objects are re-filled in place when the theme changes. Build colour
+ *      styles inside render (the `useT()` call at the top of each component is
+ *      what re-runs them).
  */
 import React from 'react';
 import {
@@ -18,8 +25,10 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle, Defs, LinearGradient as SvgGrad, Stop } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { C, DIAG, F, G, VERT } from './theme';
+import { C, DIAG, F, G, RADIUS, SHADOW, TYPE, VERT } from './theme';
+import { useT } from './theming';
 import { haptics } from './haptics';
 import { Icon, IconName } from './icons';
 
@@ -48,13 +57,16 @@ export function T({
   d = false,
   size = 15,
   weight = 400,
-  color = C.ink,
+  color,
   lh,
   center,
   ls,
   style,
   ...rest
 }: TxtProps) {
+  const t = useT();
+  // Display type carries the board's −0.015em tracking unless told otherwise.
+  const tracking = ls !== undefined ? ls : d ? size * TYPE.displayTracking : undefined;
   return (
     <RNText
       {...rest}
@@ -62,10 +74,10 @@ export function T({
         {
           fontFamily: faceFor(d, weight),
           fontSize: size,
-          color,
+          color: color ?? t.ink,
           ...(lh ? { lineHeight: lh } : null),
           ...(center ? { textAlign: 'center' as const } : null),
-          ...(ls !== undefined ? { letterSpacing: ls } : null),
+          ...(tracking !== undefined ? { letterSpacing: tracking } : null),
         },
         style,
       ]}
@@ -73,7 +85,36 @@ export function T({
   );
 }
 
-/* ── gradients ────────────────────────────────────────────────────── */
+/** The wide uppercase eyebrow that sits above titles and inside grouped cards. */
+export function Overline({
+  children,
+  color,
+  style,
+}: {
+  children: React.ReactNode;
+  color?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const t = useT();
+  return (
+    <RNText
+      style={[
+        {
+          fontFamily: F.bold,
+          fontSize: TYPE.overline.size,
+          letterSpacing: TYPE.overline.ls,
+          textTransform: TYPE.overline.transform,
+          color: color ?? t.muted,
+        },
+        style as never,
+      ]}
+    >
+      {children}
+    </RNText>
+  );
+}
+
+/* ── surfaces ─────────────────────────────────────────────────────── */
 
 type GradProps = {
   colors: readonly string[];
@@ -90,16 +131,100 @@ export function Grad({ colors, diag, style, children, pointerEvents }: GradProps
       colors={colors as unknown as readonly [string, string, ...string[]]}
       start={dir.start}
       end={dir.end}
-      style={style}
-      pointerEvents={pointerEvents}
+      style={[style, pointerEvents ? { pointerEvents } : null]}
     >
       {children}
     </LinearGradient>
   );
 }
 
-/** Sand-tinted card — the app's default container. */
+/** Warm-paper page shell. Cards sit on this; it never goes white. */
+export function Screen({
+  children,
+  style,
+  top = true,
+}: {
+  children?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  /** Pad for the status bar. Off for screens that draw their own hero. */
+  top?: boolean;
+}) {
+  const t = useT();
+  const insets = useSafeAreaInsets();
+  return (
+    <View
+      style={[
+        { flex: 1, backgroundColor: t.paper, paddingTop: top ? insets.top : 0 },
+        style,
+      ]}
+    >
+      {children}
+    </View>
+  );
+}
+
+/**
+ * Elevation wrapper for surfaces that must clip their children.
+ *
+ * A `boxShadow` and `overflow: 'hidden'` on the same view lose the corner radius
+ * on iOS — fill and shadow both paint square. Keeping the shadow on a plain
+ * outer view and the clip on the inner one avoids that. Surfaces with nothing to
+ * clip skip this and carry both on one view, so the caller's padding still lands
+ * where they expect it.
+ */
+function Elevated({
+  shadow,
+  radius,
+  children,
+  style,
+}: {
+  shadow: string;
+  radius: number;
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return <View style={[{ borderRadius: radius, boxShadow: shadow }, style]}>{children}</View>;
+}
+
+/**
+ * True-white elevated card: hairline border plus the two-layer shadow. `tinted`
+ * is the selected/hero state — accent tint gradient behind a 1.5px tint border.
+ */
 export function Card({
+  style,
+  children,
+  tinted,
+  onPress,
+  radius = RADIUS.card,
+  flat,
+}: {
+  style?: StyleProp<ViewStyle>;
+  children?: React.ReactNode;
+  tinted?: boolean;
+  onPress?: () => void;
+  radius?: number;
+  /** Drop the shadow — for cards nested inside another elevated surface. */
+  flat?: boolean;
+}) {
+  const t = useT();
+  const shell: ViewStyle = {
+    borderRadius: radius,
+    borderWidth: tinted ? 1.5 : 1,
+    borderColor: tinted ? t.accentTintBorder : t.hairline,
+    boxShadow: flat ? SHADOW.none : SHADOW.card,
+  };
+  const inner = tinted ? (
+    <Grad colors={G.accentTint} diag style={[shell, style]}>
+      {children}
+    </Grad>
+  ) : (
+    <View style={[shell, { backgroundColor: t.card }, style]}>{children}</View>
+  );
+  return onPress ? <Tap onPress={onPress}>{inner}</Tap> : inner;
+}
+
+/** Lower-elevation list row on the same white-on-paper recipe. */
+export function RowCard({
   style,
   children,
   tinted,
@@ -107,25 +232,65 @@ export function Card({
 }: {
   style?: StyleProp<ViewStyle>;
   children?: React.ReactNode;
-  /** Persimmon-washed variant with its border. */
   tinted?: boolean;
   onPress?: () => void;
 }) {
-  const inner = (
-    <Grad
-      colors={tinted ? G.accentWash : G.card}
-      diag={tinted}
-      style={[
-        { borderRadius: 22, overflow: 'hidden' },
-        tinted && { borderWidth: 1.5, borderColor: C.accentWashBorder },
-        style,
-      ]}
-    >
+  const t = useT();
+  const shell: ViewStyle = {
+    borderRadius: RADIUS.row,
+    borderWidth: tinted ? 1.5 : 1,
+    borderColor: tinted ? t.accentTintBorder : t.hairline,
+    boxShadow: SHADOW.row,
+  };
+  const inner = tinted ? (
+    <Grad colors={G.accentTint} diag style={[shell, style]}>
       {children}
     </Grad>
+  ) : (
+    <View style={[shell, { backgroundColor: t.card }, style]}>{children}</View>
   );
   return onPress ? <Tap onPress={onPress}>{inner}</Tap> : inner;
 }
+
+/* ── surface skins ────────────────────────────────────────────────── */
+
+/*
+ * Style fragments for places that build their own container instead of using
+ * `Card`. They read the live tokens, so they must be *called during render* —
+ * `style={[LAYOUT, cardSkin()]}`, never assigned to a module-scope const.
+ */
+
+/** White, hairline-bordered, two-layer shadow — the default elevated surface. */
+export const cardSkin = (): ViewStyle => ({
+  backgroundColor: C.card,
+  borderWidth: 1,
+  borderColor: C.hairline,
+  boxShadow: SHADOW.card,
+});
+
+/** The same recipe one step down, for list rows and small tiles. */
+export const rowSkin = (): ViewStyle => ({
+  backgroundColor: C.card,
+  borderWidth: 1,
+  borderColor: C.hairline,
+  boxShadow: SHADOW.row,
+});
+
+/** Selected / hero state: 1.5px tint border over the accent tint gradient. */
+export const tintSkin = (): ViewStyle => ({
+  borderWidth: 1.5,
+  borderColor: C.accentTintBorder,
+});
+
+/** Recessed well — inputs, tracks and the timeline's block bodies. */
+export const wellSkin = (): ViewStyle => ({
+  backgroundColor: C.wellFrom,
+  borderWidth: 1,
+  borderColor: C.hairline,
+});
+
+/** Flat, unelevated fill for chips and quiet buttons. */
+export const chipSkin = (): ViewStyle => ({ backgroundColor: C.chipFrom });
 
 /* ── pressables ───────────────────────────────────────────────────── */
 
@@ -163,6 +328,10 @@ export function Tap({
 
 type BtnKind = 'ink' | 'accent' | 'quiet' | 'ghost';
 
+/**
+ * Primary is the ink pill. The accent pill is rationed to the one decisive
+ * action on a screen — it carries ink text and an inset top highlight.
+ */
 export function Button({
   label,
   onPress,
@@ -180,8 +349,17 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   height?: number;
 }) {
-  const fg =
-    disabled ? C.ghost : kind === 'ink' ? C.white : kind === 'quiet' ? C.textMid : C.ink;
+  const t = useT();
+  const fg = disabled
+    ? t.disabledText
+    : kind === 'ink'
+      ? t.onInk
+      : kind === 'accent'
+        ? t.accentOn
+        : kind === 'quiet'
+          ? t.textMid
+          : t.ink;
+
   const content = (
     <View style={[S.btnRow, { height }]}>
       {icon ? <Icon name={icon} size={18} color={fg} /> : null}
@@ -193,12 +371,26 @@ export function Button({
 
   if (disabled) {
     return (
-      <View style={[{ borderRadius: 999, backgroundColor: C.disabled }, style]}>{content}</View>
+      <View style={[{ borderRadius: RADIUS.pill, backgroundColor: t.disabled }, style]}>
+        {content}
+      </View>
     );
   }
   if (kind === 'ghost') {
     return (
-      <Tap onPress={onPress} style={[S.btnGhost, { height, borderRadius: 999 }, style]}>
+      <Tap
+        onPress={onPress}
+        style={[
+          {
+            borderRadius: RADIUS.pill,
+            backgroundColor: t.card,
+            borderWidth: 1.5,
+            borderColor: t.hairlineStrong,
+            boxShadow: SHADOW.row,
+          },
+          style,
+        ]}
+      >
         {content}
       </Tap>
     );
@@ -206,100 +398,262 @@ export function Button({
   if (kind === 'quiet') {
     return (
       <Tap onPress={onPress} style={style}>
-        <Grad colors={G.press} style={{ borderRadius: 999 }}>
-          {content}
-        </Grad>
+        <View style={{ borderRadius: RADIUS.pill, backgroundColor: t.pressFrom }}>{content}</View>
       </Tap>
     );
   }
+  const accent = kind === 'accent';
   return (
     <Tap onPress={onPress} style={style}>
-      <Grad colors={kind === 'accent' ? G.accent : G.ink} diag style={{ borderRadius: 999 }}>
-        {content}
-      </Grad>
+      <Elevated shadow={accent ? SHADOW.fab : SHADOW.card} radius={RADIUS.pill}>
+        <Grad
+          colors={accent ? G.accent : G.ink}
+          diag
+          style={{ borderRadius: RADIUS.pill, overflow: 'hidden' }}
+        >
+          {accent ? (
+            // Inset top highlight — the accent pill's only ornament.
+            <LinearGradient
+              colors={['rgba(255,255,255,0.34)', 'rgba(255,255,255,0)']}
+              start={VERT.start}
+              end={VERT.end}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: height * 0.55,
+                pointerEvents: 'none',
+              }}
+            />
+          ) : null}
+          {content}
+        </Grad>
+      </Elevated>
     </Tap>
+  );
+}
+
+/**
+ * The white circle that replaced bare glyphs for back / close / overflow.
+ * Renders at `size` but always keeps a 44px hit target.
+ */
+export function IconButton({
+  icon,
+  onPress,
+  size = 40,
+  glyph,
+  color,
+  tone = 'card',
+  style,
+}: {
+  icon: IconName;
+  onPress?: () => void;
+  size?: number;
+  glyph?: number;
+  color?: string;
+  tone?: 'card' | 'ink' | 'accent' | 'plain';
+  style?: StyleProp<ViewStyle>;
+}) {
+  const t = useT();
+  const pad = Math.max(0, (44 - size) / 2);
+  const g = glyph ?? Math.round(size * 0.48);
+  const shell: ViewStyle = {
+    width: size,
+    height: size,
+    borderRadius: size / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  };
+
+  let body: React.ReactNode;
+  if (tone === 'ink') {
+    body = (
+      <Elevated shadow={SHADOW.icon} radius={size / 2}>
+        <Grad colors={G.ink} diag style={shell}>
+          <Icon name={icon} size={g} color={color ?? t.onInk} />
+        </Grad>
+      </Elevated>
+    );
+  } else if (tone === 'accent') {
+    body = (
+      <Elevated shadow={SHADOW.icon} radius={size / 2}>
+        <Grad colors={G.accent} diag style={shell}>
+          <Icon name={icon} size={g} color={color ?? t.accentOn} />
+        </Grad>
+      </Elevated>
+    );
+  } else if (tone === 'plain') {
+    body = (
+      <View style={shell}>
+        <Icon name={icon} size={g} color={color ?? t.muted} />
+      </View>
+    );
+  } else {
+    body = (
+      <View
+        style={[
+          shell,
+          {
+            backgroundColor: t.card,
+            borderWidth: 1,
+            borderColor: t.hairline,
+            boxShadow: SHADOW.icon,
+          },
+        ]}
+      >
+        <Icon name={icon} size={g} color={color ?? t.ink} />
+      </View>
+    );
+  }
+
+  return (
+    <Tap onPress={onPress} hitSlop={pad + 4} style={style}>
+      {body}
+    </Tap>
+  );
+}
+
+/** Accent-fill check coin — the selected marker on rows, tiles and cards. */
+export function CheckCoin({ size = 26, on = true }: { size?: number; on?: boolean }) {
+  const t = useT();
+  if (!on) {
+    return (
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: 2,
+          borderColor: t.ring,
+        }}
+      />
+    );
+  }
+  return (
+    <Grad
+      colors={G.accent}
+      diag
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name="check" size={Math.round(size * 0.56)} color={t.accentOn} />
+    </Grad>
   );
 }
 
 /* ── ring / progress ──────────────────────────────────────────────── */
 
+let ringSeq = 0;
+
 /**
- * Replaces the board's conic-gradient dials. `progress` 0–1; `over` swaps in
- * the overrun tone and fills the whole sweep.
+ * The v2 progress ring: rounded caps, −90° start, accent gradient over a stone
+ * track, and a white inner dial that carries its own shadow. Replaces the
+ * board's conic-gradient divs at every size (280 / 196 / 106).
  */
-export function Dial({
+export function Ring({
   size,
   thickness,
   progress,
   over,
+  tone,
   children,
   inner,
-  trackColor = C.cardTo,
+  trackColor,
+  hollow,
 }: {
   size: number;
-  thickness: number;
+  /** Defaults to the board's 15px stroke, scaled below 160px. */
+  thickness?: number;
   progress: number;
+  /** Overrun — fills the sweep in the overrun tone. Never re-accented. */
   over?: boolean;
+  /** Explicit stop pair, e.g. success green for completion. */
+  tone?: readonly string[];
   children?: React.ReactNode;
-  /** Background colour of the punched-out centre. */
+  /** Background of the punched-out centre. */
   inner?: string;
   trackColor?: string;
+  /** Skip the inner dial — for mini previews drawn on a card. */
+  hollow?: boolean;
 }) {
-  const r = (size - thickness) / 2;
+  const t = useT();
+  const id = React.useMemo(() => `ring${++ringSeq}`, []);
+  const stroke = thickness ?? (size >= 160 ? 15 : Math.max(6, Math.round(size * 0.1)));
+  const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const p = over ? 1 : Math.max(0, Math.min(1, progress));
+  const stops = tone ?? (over ? [t.overFrom, t.overTo] : [t.accentFrom, t.accentTo]);
+  const innerSize = size - stroke * 2;
+
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
         <Defs>
-          <SvgGrad id="dialg" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={over ? C.overRing : C.accentFrom} />
-            <Stop offset="1" stopColor={over ? C.over : C.accentTo} />
+          <SvgGrad id={id} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0" stopColor={stops[0]} />
+            <Stop offset="1" stopColor={stops[1]} />
           </SvgGrad>
         </Defs>
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke={trackColor}
-          strokeWidth={thickness}
+          stroke={trackColor ?? t.trackRing}
+          strokeWidth={stroke}
           fill="none"
         />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke="url(#dialg)"
-          strokeWidth={thickness}
-          fill="none"
-          strokeDasharray={`${circ * p} ${circ}`}
-          strokeLinecap={p > 0 && p < 1 ? 'round' : 'butt'}
-          transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
+        {p > 0.001 ? (
+          <Circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke={`url(#${id})`}
+            strokeWidth={stroke}
+            fill="none"
+            strokeDasharray={`${circ * p} ${circ}`}
+            strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+          />
+        ) : null}
       </Svg>
-      <View
-        style={{
-          width: size - thickness * 2,
-          height: size - thickness * 2,
-          borderRadius: size,
-          backgroundColor: inner ?? C.white,
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-        }}
-      >
-        {children}
-      </View>
+      {hollow ? (
+        children
+      ) : (
+        <View
+          style={{
+            width: innerSize,
+            height: innerSize,
+            borderRadius: innerSize / 2,
+            backgroundColor: inner ?? t.card,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            boxShadow: SHADOW.dial,
+          }}
+        >
+          {children}
+        </View>
+      )}
     </View>
   );
 }
+
+/** Retained name — the board's dials are all rings now. */
+export const Dial = Ring;
 
 /** Flat horizontal meter used for weekly completion and per-task averages. */
 export function Meter({
   value,
   height = 7,
   fill,
-  track = C.wellFrom,
+  track,
   radius = 4,
   children,
 }: {
@@ -310,10 +664,16 @@ export function Meter({
   radius?: number;
   children?: React.ReactNode;
 }) {
+  const t = useT();
   const w = `${Math.max(0, Math.min(1, value)) * 100}%` as const;
   return (
     <View
-      style={{ height, borderRadius: radius, backgroundColor: track, overflow: 'hidden' }}
+      style={{
+        height,
+        borderRadius: radius,
+        backgroundColor: track ?? t.trackRing,
+        overflow: 'hidden',
+      }}
     >
       {typeof fill === 'string' ? (
         <View style={{ width: w, height: '100%', backgroundColor: fill }} />
@@ -327,15 +687,18 @@ export function Meter({
 
 /** Thin task-average bar; `over` swaps the fill to the overrun tone. */
 export function MeterRow({ value, over }: { value: number; over?: boolean }) {
+  const t = useT();
   const w = `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%` as const;
   return (
-    <Grad colors={G.well} style={{ height: 7, borderRadius: 4, overflow: 'hidden' }}>
+    <View
+      style={{ height: 7, borderRadius: 4, overflow: 'hidden', backgroundColor: t.trackRing }}
+    >
       {over ? (
-        <View style={{ width: w, height: '100%', backgroundColor: C.over }} />
+        <View style={{ width: w, height: '100%', backgroundColor: t.over }} />
       ) : (
         <Grad colors={G.accent} diag style={{ width: w, height: '100%' }} />
       )}
-    </Grad>
+    </View>
   );
 }
 
@@ -350,52 +713,38 @@ export function Toggle({
   onChange?: (v: boolean) => void;
   small?: boolean;
 }) {
-  const w = small ? 50 : 54;
-  const h = small ? 29 : 31;
-  const k = small ? 23 : 25;
+  const t = useT();
+  const w = small ? 48 : 52;
+  const h = small ? 28 : 30;
+  const k = small ? 22 : 24;
   const knob = (
     <View
       style={{
         width: k,
         height: k,
         borderRadius: k,
-        backgroundColor: C.white,
+        backgroundColor: t.onInk,
+        boxShadow: SHADOW.knob,
       }}
     />
   );
+  const shell: ViewStyle = {
+    width: w,
+    height: h,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: on ? 'flex-end' : 'flex-start',
+  };
   return (
-    <Tap onPress={() => onChange?.(!on)} hitSlop={8}>
+    <Tap onPress={() => onChange?.(!on)} hitSlop={10}>
       {on ? (
-        <Grad
-          colors={G.ink}
-          diag
-          style={{
-            width: w,
-            height: h,
-            borderRadius: 999,
-            paddingHorizontal: 3,
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            flexDirection: 'row',
-          }}
-        >
+        <Grad colors={G.ink} diag style={shell}>
           {knob}
         </Grad>
       ) : (
-        <View
-          style={{
-            width: w,
-            height: h,
-            borderRadius: 999,
-            paddingHorizontal: 3,
-            backgroundColor: C.ring,
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            flexDirection: 'row',
-          }}
-        >
-          {knob}
-        </View>
+        <View style={[shell, { backgroundColor: t.ring }]}>{knob}</View>
       )}
     </Tap>
   );
@@ -416,37 +765,39 @@ export function Segmented({
   dark?: boolean;
   big?: boolean;
 }) {
+  const t = useT();
   return (
-    <Grad colors={dark ? G.press : G.chip} style={S.segWrap}>
+    <View style={[S.segWrap, { backgroundColor: t.pressFrom }]}>
       {options.map((o) => {
         const on = o.key === value;
-        const label = o.label ? (
-          <T
-            size={big ? 15.5 : 14.5}
-            weight={on ? 700 : 600}
-            color={on ? (dark ? C.white : C.ink) : dark ? C.faint : C.muted}
-          >
-            {o.label}
-          </T>
-        ) : null;
-        const glyph = o.icon ? (
-          <Icon name={o.icon} size={18} color={on ? (dark ? C.white : C.ink) : C.muted} />
-        ) : null;
+        const fg = on ? (dark ? t.onInk : t.ink) : t.muted;
         const body = (
           <View style={[S.segItem, big && { flex: 1, paddingVertical: 13 }]}>
-            {glyph}
-            {label}
+            {o.icon ? <Icon name={o.icon} size={18} color={fg} /> : null}
+            {o.label ? (
+              <T size={big ? 15.5 : 14.5} weight={on ? 700 : 600} color={fg}>
+                {o.label}
+              </T>
+            ) : null}
           </View>
         );
         return (
           <Tap key={o.key} onPress={() => onChange(o.key)} style={big ? { flex: 1 } : undefined}>
             {on ? (
               dark ? (
-                <Grad colors={G.ink} diag style={{ borderRadius: 999 }}>
+                <Grad colors={G.ink} diag style={{ borderRadius: RADIUS.pill }}>
                   {body}
                 </Grad>
               ) : (
-                <View style={S.segOn}>{body}</View>
+                <View
+                  style={{
+                    backgroundColor: t.card,
+                    borderRadius: RADIUS.pill,
+                    boxShadow: SHADOW.row,
+                  }}
+                >
+                  {body}
+                </View>
               )
             ) : (
               body
@@ -454,7 +805,7 @@ export function Segmented({
           </Tap>
         );
       })}
-    </Grad>
+    </View>
   );
 }
 
@@ -472,8 +823,15 @@ export function Pill({
   onPress?: () => void;
   size?: number;
 }) {
+  const t = useT();
   const fg =
-    tone === 'ink' ? C.white : tone === 'tint' ? C.accentInkDeep : tone === 'accent' ? C.ink : C.textMid;
+    tone === 'ink'
+      ? t.onInk
+      : tone === 'tint'
+        ? t.accentText
+        : tone === 'accent'
+          ? t.accentOn
+          : t.textMid;
   const inner = (
     <View style={S.pillRow}>
       {icon ? <Icon name={icon} size={size} color={fg} /> : null}
@@ -492,15 +850,26 @@ export function Pill({
         {inner}
       </Grad>
     ) : tone === 'tint' ? (
-      <Grad colors={G.accentTint} diag style={S.pillShell}>
+      <Grad
+        colors={G.accentTint}
+        diag
+        style={[S.pillShell, { borderWidth: 1, borderColor: t.accentTintBorder }]}
+      >
         {inner}
       </Grad>
     ) : tone === 'outline' ? (
-      <View style={[S.pillShell, { borderWidth: 1.5, borderColor: C.border }]}>{inner}</View>
-    ) : (
-      <Grad colors={G.card} style={S.pillShell}>
+      <View style={[S.pillShell, { borderWidth: 1.5, borderColor: t.hairlineStrong }]}>
         {inner}
-      </Grad>
+      </View>
+    ) : (
+      <View
+        style={[
+          S.pillShell,
+          { backgroundColor: t.card, borderWidth: 1, borderColor: t.hairline },
+        ]}
+      >
+        {inner}
+      </View>
     );
   return onPress ? <Tap onPress={onPress}>{shell}</Tap> : shell;
 }
@@ -511,21 +880,37 @@ export function Sheet({
   visible,
   onClose,
   children,
-  dimOpacity = 0.42,
+  dimOpacity,
 }: {
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
   dimOpacity?: number;
 }) {
+  const t = useT();
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable
-        style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(20,20,24,${dimOpacity})` }]}
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: dimOpacity === undefined ? t.scrim : `rgba(24,18,14,${dimOpacity})` },
+        ]}
         onPress={onClose}
       />
-      <View style={S.sheet}>
-        <View style={S.grabber} />
+      <View
+        style={[
+          S.sheet,
+          {
+            backgroundColor: t.card,
+            borderTopWidth: 1,
+            borderColor: t.hairline,
+            paddingBottom: 24 + insets.bottom,
+            boxShadow: SHADOW.sheet,
+          },
+        ]}
+      >
+        <View style={[S.grabber, { backgroundColor: t.ring }]} />
         {children}
       </View>
     </Modal>
@@ -541,14 +926,27 @@ export function Dialog({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  const t = useT();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable
-        style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(20,20,24,0.42)' }]}
+        style={[StyleSheet.absoluteFill, { backgroundColor: t.scrim }]}
         onPress={onClose}
       />
-      <View style={S.dialogWrap} pointerEvents="box-none">
-        <View style={S.dialog}>{children}</View>
+      <View style={[S.dialogWrap, { pointerEvents: 'box-none' }]}>
+        <View
+          style={[
+            S.dialog,
+            {
+              backgroundColor: t.card,
+              borderWidth: 1,
+              borderColor: t.hairline,
+              boxShadow: SHADOW.dialog,
+            },
+          ]}
+        >
+          {children}
+        </View>
       </View>
     </Modal>
   );
@@ -581,38 +979,49 @@ export function Row({
 
 export const Spacer = () => <View style={{ flex: 1 }} />;
 
-/** Back chevron + optional page dots, the recurring detail-screen header. */
+/** Back button + optional page dots — the recurring detail-screen header. */
 export function TopBar({
   onBack,
   dots,
   right,
   center,
+  style,
 }: {
   onBack?: () => void;
   dots?: boolean;
   right?: React.ReactNode;
   center?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
 }) {
+  const t = useT();
   return (
-    <Row style={{ justifyContent: 'space-between', paddingTop: 12 }}>
-      <Tap onPress={onBack} hitSlop={12}>
-        <Icon name="chevL" size={24} color={C.faint} />
-      </Tap>
+    <Row style={[{ justifyContent: 'space-between', paddingTop: 12 }, style]}>
+      {onBack ? (
+        <IconButton icon="chevL" onPress={onBack} size={40} glyph={20} />
+      ) : (
+        <View style={{ width: 40 }} />
+      )}
       {center}
       {dots ? (
         <Row gap={4}>
           {[0, 1, 2].map((i) => (
-            <View key={i} style={S.dot} />
+            <View
+              key={i}
+              style={{ width: 4.5, height: 4.5, borderRadius: 3, backgroundColor: t.faint }}
+            />
           ))}
         </Row>
       ) : (
-        right ?? <View style={{ width: 24 }} />
+        right ?? <View style={{ width: 40 }} />
       )}
     </Row>
   );
 }
 
-/** Grouped settings card with a muted caption. */
+/**
+ * Grouped settings card: white, hairline-bordered, with an in-card uppercase
+ * overline and hairline dividers between its rows.
+ */
 export function Group({
   title,
   children,
@@ -622,15 +1031,37 @@ export function Group({
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  const t = useT();
+  const items = React.Children.toArray(children).filter(Boolean);
   return (
-    <Grad colors={G.card} style={[S.group, style]}>
-      {title ? (
-        <T size={13} weight={600} color={C.faint} style={{ paddingTop: 14, paddingBottom: 6 }}>
-          {title}
-        </T>
-      ) : null}
-      {children}
-    </Grad>
+    <View
+      style={[
+        {
+          borderRadius: RADIUS.card,
+          paddingHorizontal: 18,
+          paddingBottom: 4,
+          backgroundColor: t.card,
+          borderWidth: 1,
+          borderColor: t.hairline,
+          boxShadow: SHADOW.card,
+        },
+        style,
+      ]}
+    >
+      {title ? <Overline style={{ paddingTop: 16, paddingBottom: 2 }}>{title}</Overline> : null}
+      {items.map((child, i) => (
+        <View
+          key={i}
+          style={
+            i > 0
+              ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.divider }
+              : undefined
+          }
+        >
+          {child}
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -653,46 +1084,55 @@ export function RowItem({
   right?: React.ReactNode;
   labelColor?: string;
 }) {
+  const t = useT();
   return (
     <Tap onPress={onPress}>
-      <Row gap={14} style={{ paddingVertical: 15 }}>
-        {icon ? <Icon name={icon} size={21} color={C.text} /> : null}
-        <T size={16} weight={700} color={labelColor ?? C.ink} style={{ flex: 1 }}>
+      <Row gap={14} style={{ paddingVertical: 15, minHeight: 52 }}>
+        {icon ? <Icon name={icon} size={21} color={t.textMid} /> : null}
+        <T size={16} weight={700} color={labelColor ?? t.ink} style={{ flex: 1 }}>
           {label}
         </T>
         {value ? (
-          <T size={16} color={C.muted}>
+          <T size={16} color={t.muted}>
             {value}
           </T>
         ) : null}
         {right}
-        {chevron ? <Icon name="chevR" size={17} color={C.ghost} /> : null}
-        {external ? <Icon name="arrowUR" size={16} color={C.ghost} /> : null}
+        {chevron ? <Icon name="chevR" size={17} color={t.faint} /> : null}
+        {external ? <Icon name="arrowUR" size={16} color={t.faint} /> : null}
       </Row>
     </Tap>
   );
 }
 
 export function Loading() {
+  const t = useT();
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator color={C.accent} />
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: t.paper,
+      }}
+    >
+      <ActivityIndicator color={t.accent} />
     </View>
   );
 }
 
 export { ScrollView };
 
+/* Layout-only styles. Colour lives in render so the theme can move. */
 const S = StyleSheet.create({
   btnRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
   },
-  btnGhost: { borderWidth: 1.6, borderColor: C.borderStrong },
-  segWrap: { flexDirection: 'row', padding: 4, borderRadius: 999 },
+  segWrap: { flexDirection: 'row', padding: 4, borderRadius: RADIUS.pill },
   segItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -700,18 +1140,10 @@ const S = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 22,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: RADIUS.pill,
+    minHeight: 44,
   },
-  segOn: {
-    backgroundColor: C.white,
-    borderRadius: 999,
-    shadowColor: '#000',
-    shadowOpacity: 0.07,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
-  },
-  pillShell: { borderRadius: 999, overflow: 'hidden' },
+  pillShell: { borderRadius: RADIUS.pill, overflow: 'hidden' },
   pillRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -724,39 +1156,23 @@ const S = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: C.white,
-    borderTopLeftRadius: 26,
-    borderTopRightRadius: 26,
+    borderTopLeftRadius: RADIUS.sheet,
+    borderTopRightRadius: RADIUS.sheet,
     paddingHorizontal: 22,
     paddingTop: 14,
-    paddingBottom: 30,
-    shadowColor: '#000',
-    shadowOpacity: 0.16,
-    shadowRadius: 40,
-    shadowOffset: { width: 0, height: -12 },
-    elevation: 24,
   },
   grabber: {
-    width: 56,
+    width: 44,
     height: 5,
     borderRadius: 3,
-    backgroundColor: C.borderStrong,
     alignSelf: 'center',
     marginBottom: 18,
   },
   dialogWrap: { flex: 1, justifyContent: 'center', paddingHorizontal: 22 },
   dialog: {
-    backgroundColor: C.white,
-    borderRadius: 26,
+    borderRadius: RADIUS.dialog,
     paddingHorizontal: 24,
     paddingTop: 28,
     paddingBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.22,
-    shadowRadius: 50,
-    shadowOffset: { width: 0, height: 20 },
-    elevation: 24,
   },
-  dot: { width: 4.5, height: 4.5, borderRadius: 3, backgroundColor: C.faint },
-  group: { borderRadius: 22, paddingHorizontal: 18, paddingBottom: 8, overflow: 'hidden' },
 });

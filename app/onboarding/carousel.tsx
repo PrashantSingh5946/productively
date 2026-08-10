@@ -3,18 +3,20 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Card, Dial, Grad, Row, Spacer, T } from '../../src/ui';
+import { Button, Dial, Grad, Row, Spacer, T, rowSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
-import { C, G } from '../../src/theme';
+import { C, G, TASK_TONES } from '../../src/theme';
 
-const PREVIEW = [
+import { useT } from '../../src/theming';
+const preview = () => [
   { title: 'Deep breathing', icon: 'leaf', color: C.accent, len: '1 min' },
   { title: 'Make the bed', icon: 'bed', color: C.textSoft, len: '1 min' },
-  { title: 'Drink water', icon: 'bottle', color: '#7FB6E8', len: '1 min' },
+  { title: 'Drink water', icon: 'bottle', color: TASK_TONES.water.fg, len: '1 min' },
   { title: 'Morning pages', icon: 'pencil', color: C.textSoft, len: '10 min' },
 ] as const;
 
 export default function Carousel() {
+  useT();
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState(0);
 
@@ -38,7 +40,7 @@ export default function Carousel() {
               flex: 1,
               height: 4,
               borderRadius: 2,
-              backgroundColor: i === page ? C.white : '#E8DED6',
+              backgroundColor: i === page ? C.card : C.stoneDeep,
             }}
           />
         ))}
@@ -60,16 +62,16 @@ function PanelOne() {
       </T>
 
       <Grad
-        colors={['#FFF6F0', '#FFE9DC']}
+        colors={G.tintSoft}
         diag
         style={{ marginTop: 34, borderRadius: 22, padding: 26, paddingVertical: 26 }}
       >
         <View
           style={{
             borderRadius: 18,
-            backgroundColor: C.white,
+            backgroundColor: C.card,
             borderWidth: 1,
-            borderColor: '#EFE6DF',
+            borderColor: C.hairline,
             paddingHorizontal: 16,
             paddingTop: 20,
             paddingBottom: 18,
@@ -83,8 +85,8 @@ function PanelOne() {
           </T>
 
           <View style={{ gap: 9, marginTop: 16 }}>
-            {PREVIEW.map((p) => (
-              <Grad key={p.title} colors={G.card} style={LINE}>
+            {preview().map((p) => (
+              <Grad key={p.title} colors={G.card} style={[LINE, rowSkin()]}>
                 <Icon name={p.icon} size={19} color={p.color} />
                 <T size={14} weight={600} color={C.textMid} style={{ flex: 1 }}>
                   {p.title}
@@ -107,7 +109,7 @@ function PanelOne() {
               justifyContent: 'center',
             }}
           >
-            <Icon name="play" size={20} color={C.white} />
+            <Icon name="play" size={20} color={C.onInk} />
           </Grad>
         </View>
       </Grad>
@@ -123,11 +125,11 @@ function PanelTwo() {
       </T>
 
       <Grad
-        colors={['#FFF6F0', '#FFE9DC']}
+        colors={G.tintSoft}
         diag
         style={{ marginTop: 30, borderRadius: 22, padding: 22, paddingBottom: 26 }}
       >
-        <Grad colors={['#FFF1E8', '#FFE0CF']} diag style={NOTIF}>
+        <Grad colors={G.accentTint} diag style={NOTIF}>
           <Grad
             colors={G.accent}
             diag
@@ -156,8 +158,8 @@ function PanelTwo() {
             Drink water
           </T>
           <View style={{ marginTop: 16 }}>
-            <Dial size={186} thickness={16} progress={0.78} inner="#FFF2E9">
-              <Icon name="bottle" size={34} color="#7FB6E8" />
+            <Dial size={196} thickness={15} progress={0.78} inner={C.accentWash}>
+              <Icon name="bottle" size={34} color={TASK_TONES.water.fg} />
               <T d size={32} weight={800}>
                 00:12
               </T>

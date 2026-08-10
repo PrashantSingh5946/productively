@@ -5,12 +5,13 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Dialog, Grad, MeterRow, Row, Sheet, T, Tap } from '../../src/ui';
+import { Dialog, Grad, MeterRow, Overline, Row, Sheet, T, Tap, cardSkin, rowSkin } from '../../src/ui';
 import { Icon, MoodFace } from '../../src/icons';
-import { C, G, TASK_TONES } from '../../src/theme';
+import { C, DOCK_CLEARANCE, G, RADIUS, TASK_TONES } from '../../src/theme';
 import {
   DAY_LETTERS,
   MOMENTUM_TIERS,
+  stepColor,
   THIRTY_DAY,
   TIME_SPENT,
   WEEK_GRID,
@@ -18,7 +19,9 @@ import {
 } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function Analysis() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state } = useStore();
   const [tab, setTab] = useState<'analysis' | 'note'>('analysis');
@@ -29,26 +32,27 @@ export default function Analysis() {
   const streak = Math.max(...state.routines.map((r) => r.streak)) + 1;
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: DOCK_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
-        <Row gap={6} style={{ paddingTop: 10 }}>
+        <Overline style={{ paddingTop: 14, paddingLeft: 2 }}>Last 30 days</Overline>
+        <Row gap={6} style={{ paddingTop: 4 }}>
           {(['analysis', 'note'] as const).map((k) => {
             const on = tab === k;
             const label = k === 'analysis' ? 'Analysis' : 'Note';
             return (
               <Tap key={k} onPress={() => setTab(k)}>
                 {on ? (
-                  <Grad colors={G.card} style={BIG_TAB}>
+                  <View style={[BIG_TAB, rowSkin()]}>
                     <T d size={21} weight={800}>
                       {label}
                     </T>
-                  </Grad>
+                  </View>
                 ) : (
                   <View style={BIG_TAB}>
-                    <T d size={21} weight={800} color={C.ghost}>
+                    <T d size={21} weight={800} color={C.faint}>
                       {label}
                     </T>
                   </View>
@@ -89,7 +93,7 @@ export default function Analysis() {
               setPickerOpen(false);
             }}
           >
-            <Grad colors={G.card} style={PICK}>
+            <Grad colors={G.card} style={[PICK, rowSkin()]}>
               <T size={16} weight={700} style={{ flex: 1 }}>
                 Summary
               </T>
@@ -104,7 +108,7 @@ export default function Analysis() {
                 setPickerOpen(false);
               }}
             >
-              <Grad colors={G.card} style={PICK}>
+              <Grad colors={G.card} style={[PICK, rowSkin()]}>
                 <T size={16} weight={700} style={{ flex: 1 }}>
                   {r.name}
                 </T>
@@ -143,7 +147,7 @@ function ScopeBar({
           <Tap key={c.id} onPress={() => onScope(c.id)}>
             {on ? (
               <Grad colors={G.ink} diag style={SCOPE_ON}>
-                <T size={14.5} weight={700} color={C.white}>
+                <T size={14.5} weight={700} color={C.onInk}>
                   {c.name}
                 </T>
               </Grad>
@@ -159,7 +163,7 @@ function ScopeBar({
       })}
       <View style={{ flex: 1 }} />
       <Tap onPress={onMore}>
-        <Grad colors={G.card} style={MORE}>
+        <Grad colors={G.card} style={[MORE, rowSkin()]}>
           <Icon name="chevD" size={17} color={C.textSoft} />
         </Grad>
       </Tap>
@@ -187,7 +191,7 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
 
   return (
     <>
-      <Grad colors={G.card} style={{ marginTop: 18, borderRadius: 24, padding: 22 }}>
+      <Grad colors={G.card} style={[{ marginTop: 18, borderRadius: RADIUS.card, padding: 22 }, cardSkin()]}>
         <Row center={false}>
           <View style={{ flex: 1 }}>
             <T size={17} weight={500} color={C.textMid}>
@@ -202,7 +206,7 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
           </View>
           <Tap onPress={onRings}>
             <View style={{ alignItems: 'center', gap: 8 }}>
-              <Icon name="ring" size={62} color={tier.color} />
+              <Icon name="ring" size={62} color={stepColor(tier.step)} />
               <Row gap={5}>
                 <T size={14} weight={700}>
                   Momentum
@@ -213,7 +217,7 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
           </Tap>
         </Row>
 
-        <View style={PROG}>
+        <View style={PROG()}>
           <Grad
             colors={G.accent}
             diag
@@ -226,7 +230,7 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
               borderRadius: 999,
             }}
           />
-          <T size={12} weight={600} color={C.textSoft} style={{ position: 'absolute', right: 12, top: 6 }}>
+          <T size={12} weight={700} color={C.textMid} style={{ position: 'absolute', right: 14, top: 6 }}>
             {nextTier ? `${toNext} days to ${nextTier.name}` : 'Top tier reached'}
           </T>
         </View>
@@ -240,19 +244,19 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
           <Icon name="help" size={17} color={C.ghost} />
         </Row>
         <Row gap={10}>
-          <Grad colors={G.card} style={NAV}>
+          <Grad colors={G.card} style={[NAV, rowSkin()]}>
             <Icon name="chevL" size={15} color={C.muted} />
           </Grad>
           <T size={14} weight={600} color={C.textMid}>
             {weekLabel()}
           </T>
-          <Grad colors={G.card} style={NAV}>
+          <Grad colors={G.card} style={[NAV, rowSkin()]}>
             <Icon name="chevR" size={15} color={C.muted} />
           </Grad>
         </Row>
       </Row>
 
-      <Grad colors={G.card} style={WEEK_CARD}>
+      <Grad colors={G.card} style={[WEEK_CARD, cardSkin()]}>
         <View style={{ flex: 1 }}>
           <T d size={30} weight={800}>
             {weekly}%
@@ -262,11 +266,11 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
           </T>
         </View>
         <Grad colors={G.accent} diag style={FACE_BADGE}>
-          <MoodFace level={3} size={32} color={C.ink} />
+          <MoodFace level={3} size={32} color={C.accentOn} />
         </Grad>
       </Grad>
 
-      <Grad colors={G.card} style={{ marginTop: 12, borderRadius: 22, padding: 20 }}>
+      <Grad colors={G.card} style={[{ marginTop: 12, borderRadius: RADIUS.card, padding: 20 }, cardSkin()]}>
         <Row style={{ justifyContent: 'space-between', paddingLeft: 96 }}>
           {DAY_LETTERS.map((d, i) => (
             <T key={i} size={13} weight={600} color={i === new Date().getDay() ? C.ink : C.muted}>
@@ -329,7 +333,7 @@ function PerRoutine({ routineId }: { routineId: string }) {
 
   return (
     <>
-      <Grad colors={G.card} style={{ marginTop: 18, borderRadius: 24, padding: 20 }}>
+      <Grad colors={G.card} style={[{ marginTop: 18, borderRadius: RADIUS.card, padding: 20 }, cardSkin()]}>
         <Row style={{ justifyContent: 'space-between', alignItems: 'baseline' }}>
           <T size={15} weight={700}>
             Last 30 days
@@ -396,9 +400,9 @@ function PerRoutine({ routineId }: { routineId: string }) {
         ))}
       </View>
 
-      <Grad colors={G.accentWash} diag style={INSIGHT}>
+      <Grad colors={G.accentWash} diag style={INSIGHT()}>
         <Icon name="spark" size={20} color={C.accentInkSoft} />
-        <T size={13.5} weight={500} lh={20} color="#7D3720" style={{ flex: 1 }}>
+        <T size={13.5} weight={500} lh={20} color={C.accentText} style={{ flex: 1 }}>
           {r ? `${TIME_SPENT[0].title} overruns 4 days in 5. Try moving it after ${TIME_SPENT[1].title.toLowerCase()}, or cap it at 10 minutes.` : ''}
         </T>
       </Grad>
@@ -442,7 +446,7 @@ function RingsDialog({
           const on = t.name === current.name;
           const row = (
             <Row gap={16} style={{ opacity: on ? 1 : 0.45 }}>
-              <Icon name="ring" size={on ? 32 : 30} color={t.color} />
+              <Icon name="ring" size={on ? 32 : 30} color={stepColor(t.step)} />
               <View style={{ flex: 1 }}>
                 <T size={16} weight={700}>
                   {t.name}
@@ -524,7 +528,7 @@ function Notes({ routineId }: { routineId: string }) {
         ) : null}
 
         {list.map((n) => (
-          <Grad key={n.id} colors={G.card} style={{ borderRadius: 22, padding: 20, paddingVertical: 18 }}>
+          <Grad key={n.id} colors={G.card} style={[{ borderRadius: RADIUS.card, padding: 20, paddingVertical: 18 }, cardSkin()]}>
             <Row gap={10}>
               <T size={13} weight={700}>
                 {n.day}
@@ -547,7 +551,7 @@ function Notes({ routineId }: { routineId: string }) {
       </View>
 
       {writing ? (
-        <Grad colors={G.card} style={{ marginTop: 18, borderRadius: 18, padding: 16 }}>
+        <Grad colors={G.card} style={[{ marginTop: 18, borderRadius: RADIUS.tile, padding: 16 }, rowSkin()]}>
           <TextInput
             value={draft}
             onChangeText={setDraft}
@@ -555,7 +559,7 @@ function Notes({ routineId }: { routineId: string }) {
             autoFocus
             placeholder="What happened today?"
             placeholderTextColor={C.ghost}
-            style={NOTE_INPUT}
+            style={NOTE_INPUT()}
           />
           <Row gap={10} style={{ marginTop: 12, justifyContent: 'flex-end' }}>
             <Tap onPress={() => setWriting(false)}>
@@ -578,7 +582,7 @@ function Notes({ routineId }: { routineId: string }) {
         </Grad>
       ) : (
         <Tap onPress={() => setWriting(true)}>
-          <Row gap={10} style={ADD_NOTE}>
+          <Row gap={10} style={ADD_NOTE()}>
             <Icon name="plus" size={18} color={C.ghost} />
             <T size={14.5} weight={600} color={C.ghost}>
               Write a note for today
@@ -602,14 +606,14 @@ const MORE = {
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };
-const PROG = {
+const PROG = () => ({
   marginTop: 18,
   height: 26,
   borderRadius: 999,
-  backgroundColor: '#E8E1DA',
+  backgroundColor: C.stoneDeep,
   overflow: 'hidden' as const,
   justifyContent: 'center' as const,
-};
+});
 const NAV = {
   width: 34,
   height: 34,
@@ -641,7 +645,7 @@ const SMALL_ICON = {
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };
-const INSIGHT = {
+const INSIGHT = () => ({
   marginTop: 18,
   paddingVertical: 16,
   paddingHorizontal: 18,
@@ -650,7 +654,7 @@ const INSIGHT = {
   borderColor: C.accentWashBorder,
   flexDirection: 'row' as const,
   gap: 12,
-};
+});
 const YOU = { paddingVertical: 5, paddingHorizontal: 11, borderRadius: 999 };
 const PICK = {
   flexDirection: 'row' as const,
@@ -659,7 +663,7 @@ const PICK = {
   paddingHorizontal: 20,
   borderRadius: 18,
 };
-const ADD_NOTE = {
+const ADD_NOTE = () => ({
   marginTop: 18,
   padding: 16,
   borderRadius: 18,
@@ -667,12 +671,12 @@ const ADD_NOTE = {
   borderColor: C.borderStrong,
   borderStyle: 'dashed' as const,
   justifyContent: 'center' as const,
-};
-const NOTE_INPUT = {
+});
+const NOTE_INPUT = () => ({
   minHeight: 70,
   fontFamily: 'Instrument_400Regular',
   fontSize: 14.5,
   lineHeight: 22,
   color: C.textMid,
   textAlignVertical: 'top' as const,
-};
+});

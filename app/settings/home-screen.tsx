@@ -6,13 +6,15 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Grad, Row, Segmented, Spacer, T, Toggle, TopBar } from '../../src/ui';
+import { Button, Grad, Row, Segmented, Spacer, T, Toggle, TopBar, cardSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { C, G } from '../../src/theme';
 import { daysLabel, fmtClock } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function HomeScreenSettings() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
 
@@ -33,7 +35,7 @@ export default function HomeScreenSettings() {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 18,
         paddingHorizontal: 20,
@@ -58,12 +60,12 @@ export default function HomeScreenSettings() {
         />
       </View>
 
-      <Grad colors={G.card} style={PANEL}>
+      <Grad colors={G.card} style={[PANEL, cardSkin()]}>
         <T size={12.5} weight={600} color={C.faint} style={{ paddingHorizontal: 4, paddingBottom: 12 }}>
           Preview
         </T>
 
-        <Grad colors={['#EDE7E0', '#E4DDD5']} style={STAGE}>
+        <Grad colors={G.stone} style={STAGE}>
           {view === 'list' ? <ListPreview cfg={list} /> : <TimelinePreview showTasks={timeline.showTasks} />}
         </Grad>
 
@@ -137,7 +139,7 @@ function ListPreview({
   const r = state.routines[0];
 
   return (
-    <View style={{ borderRadius: 16, backgroundColor: C.white, padding: 16, paddingHorizontal: 18 }}>
+    <View style={{ borderRadius: 16, backgroundColor: C.card, padding: 16, paddingHorizontal: 18 }}>
       <Row gap={14}>
         {cfg.startTime ? (
           <Row gap={5}>
@@ -187,18 +189,18 @@ function ListPreview({
 
 function TimelinePreview({ showTasks }: { showTasks: boolean }) {
   return (
-    <View style={{ borderRadius: 16, backgroundColor: C.white, paddingVertical: 14, paddingHorizontal: 12 }}>
+    <View style={{ borderRadius: 16, backgroundColor: C.card, paddingVertical: 14, paddingHorizontal: 12 }}>
       <Row gap={10} center={false}>
         <T size={11} weight={500} color={C.ghost} style={{ width: 36 }}>
           08:00
         </T>
         <View style={{ flex: 1 }}>
-          <Row gap={6} style={PREV_HEAD}>
+          <Row gap={6} style={PREV_HEAD()}>
             <T size={11.5} weight={700} style={{ flex: 1 }}>
               Morning routine
             </T>
-            <View style={PREV_TICK}>
-              <Icon name="check" size={10} color={C.white} />
+            <View style={PREV_TICK()}>
+              <Icon name="check" size={10} color={C.onInk} />
             </View>
           </Row>
           {showTasks ? (
@@ -214,7 +216,7 @@ function TimelinePreview({ showTasks }: { showTasks: boolean }) {
       <Row gap={10} style={{ marginTop: 6 }}>
         <View style={{ width: 36, alignItems: 'flex-end' }}>
           <Grad colors={G.inkDeep} diag style={{ paddingVertical: 2, paddingHorizontal: 5, borderRadius: 4 }}>
-            <T size={9} weight={700} color={C.white}>
+            <T size={9} weight={700} color={C.onInk}>
               08:51
             </T>
           </Grad>
@@ -265,7 +267,7 @@ const PREV_CHIP = {
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };
-const PREV_HEAD = {
+const PREV_HEAD = () => ({
   backgroundColor: C.track,
   borderTopLeftRadius: 7,
   borderTopRightRadius: 7,
@@ -273,15 +275,15 @@ const PREV_HEAD = {
   borderBottomRightRadius: 3,
   paddingVertical: 6,
   paddingHorizontal: 9,
-};
-const PREV_TICK = {
+});
+const PREV_TICK = () => ({
   width: 15,
   height: 15,
   borderRadius: 8,
   backgroundColor: C.good,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-};
+});
 const PREV_SUB = { marginTop: 3, borderRadius: 3, paddingVertical: 7, paddingHorizontal: 9 };
 const PREV_BLOCK = {
   borderTopLeftRadius: 6,

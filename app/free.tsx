@@ -3,49 +3,51 @@ import React from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Grad, Row, Spacer, T, Tap } from '../src/ui';
+import { Button, Grad, Row, Spacer, T, Tap, rowSkin } from '../src/ui';
 import { Icon, IconName } from '../src/icons';
-import { C, G } from '../src/theme';
+import { C, G, TASK_TONES } from '../src/theme';
 
-const POINTS: {
+import { useT } from '../src/theming';
+const points = (): {
   icon: IconName;
   bg: string | readonly string[];
   fg: string;
   title: string;
   body: string;
   rail?: readonly string[];
-}[] = [
+}[] => [
   {
     icon: 'check',
     bg: G.accent,
     fg: C.ink,
     title: 'Every layout, every screen',
     body: 'Timeline view, unlimited routines, full history, all app icons.',
-    rail: ['#FF8A5B', '#FFD9C6'],
+    rail: [C.accent, C.accentTintTo],
   },
   {
     icon: 'shield',
-    bg: '#EEF3F0',
+    bg: C.goodBg,
     fg: C.good,
     title: 'Your data stays yours',
     body: 'Kept on the device, backed up only if you ask, exportable any time.',
-    rail: ['#DFE9E4', '#EFE9E3'],
+    rail: [C.stoneDeep, C.stone],
   },
   {
     icon: 'x',
-    bg: '#F1F0F6',
-    fg: '#8A807A',
+    bg: TASK_TONES.pencil.bg,
+    fg: TASK_TONES.pencil.fg,
     title: 'No ads, no upsells',
     body: 'Nothing in here is trying to sell you the next thing.',
   },
 ];
 
 export default function Free() {
+  useT();
   const insets = useSafeAreaInsets();
 
   return (
     <Grad
-      colors={['#FFD9C6', '#FFF3EC', '#FFFFFF']}
+      colors={G.sunrise}
       style={{
         flex: 1,
         paddingTop: insets.top,
@@ -69,7 +71,7 @@ export default function Free() {
       </T>
 
       <View style={{ marginTop: 34 }}>
-        {POINTS.map((p, i) => (
+        {points().map((p, i) => (
           <Row key={p.title} gap={16} center={false}>
             <View style={{ alignItems: 'center' }}>
               {typeof p.bg === 'string' ? (
@@ -83,7 +85,7 @@ export default function Free() {
               )}
               {p.rail ? <Grad colors={p.rail} style={RAIL} /> : null}
             </View>
-            <View style={{ flex: 1, paddingBottom: i === POINTS.length - 1 ? 0 : 26 }}>
+            <View style={{ flex: 1, paddingBottom: i === points().length - 1 ? 0 : 26 }}>
               <T d size={17} weight={800} lh={22}>
                 {p.title}
               </T>
@@ -97,7 +99,7 @@ export default function Free() {
 
       <Spacer />
 
-      <Grad colors={G.card} style={FOOT}>
+      <Grad colors={G.card} style={[FOOT, rowSkin()]}>
         <T size={14.5} lh={23} color={C.textMid}>
           Built as a personal tool and kept that way. If a feature is missing, ask for it — that's
           the whole roadmap.

@@ -3,21 +3,23 @@ import React from 'react';
 import { Linking, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Group, Row, RowItem, Spacer, T, Tap, TopBar } from '../src/ui';
+import { Grad, Group, RowItem, Spacer, T, Tap, TopBar } from '../src/ui';
 import { Icon } from '../src/icons';
 import { C, G } from '../src/theme';
 import { CONTACT_TOPICS } from '../src/data';
 
+import { useT } from '../src/theming';
 const mailto = (subject: string) =>
   `mailto:hello@productively.app?subject=${encodeURIComponent(`[${subject}] Productively 1.4.2`)}`;
 
 export default function Contact() {
+  useT();
   const insets = useSafeAreaInsets();
 
   const open = (subject: string) => Linking.openURL(mailto(subject)).catch(() => {});
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top, paddingHorizontal: 20 }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
       <TopBar onBack={() => router.back()} />
 
       <T d size={30} weight={800} style={{ marginTop: 16 }}>
@@ -34,7 +36,7 @@ export default function Contact() {
       </Group>
 
       <Tap onPress={() => open('Feature request')}>
-        <Grad colors={G.accentWash} diag style={SUGGEST}>
+        <Grad colors={G.accentWash} diag style={SUGGEST()}>
           <Icon name="spark" size={20} color={C.accentInkSoft} />
           <View style={{ flex: 1 }}>
             <T size={15} weight={700} lh={20}>
@@ -62,7 +64,7 @@ export default function Contact() {
   );
 }
 
-const SUGGEST = {
+const SUGGEST = () => ({
   marginTop: 14,
   paddingVertical: 18,
   paddingHorizontal: 20,
@@ -72,4 +74,4 @@ const SUGGEST = {
   flexDirection: 'row' as const,
   alignItems: 'center' as const,
   gap: 14,
-};
+});

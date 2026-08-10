@@ -7,7 +7,9 @@ import { Icon } from '../src/icons';
 import { C, G } from '../src/theme';
 import { useStore } from '../src/store';
 
+import { useT } from '../src/theming';
 export default function Splash() {
+  useT();
   const { state, ready } = useStore();
   const p = useRef(new Animated.Value(0)).current;
   const [done, setDone] = useState(false);
@@ -30,7 +32,7 @@ export default function Splash() {
     <View
       style={{
         flex: 1,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
         alignItems: 'center',
         justifyContent: 'center',
         gap: 34,
@@ -47,20 +49,25 @@ export default function Splash() {
           justifyContent: 'center',
         }}
       >
-        <Icon name="logo" size={50} color={C.ink} />
+        <Icon name="logo" size={50} color={C.accentOn} />
       </Grad>
-      <Grad
-        colors={G.well}
-        style={{ width: 190, height: 5, borderRadius: 3, overflow: 'hidden' }}
+      <View
+        style={{
+          width: 190,
+          height: 5,
+          borderRadius: 3,
+          overflow: 'hidden',
+          backgroundColor: C.trackRing,
+        }}
       >
         <Animated.View
           style={{
             height: '100%',
-            backgroundColor: C.ghost,
+            backgroundColor: C.accent,
             width: p.interpolate({ inputRange: [0, 1], outputRange: ['4%', '100%'] }),
           }}
         />
-      </Grad>
+      </View>
     </View>
   );
 }

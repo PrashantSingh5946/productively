@@ -6,10 +6,10 @@
     "scheme": "productively",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "backgroundColor": "#ffffff",
+      "backgroundColor": "#F4F1EA",
       "resizeMode": "contain",
       "image": "./assets/splash-icon.png"
     },
@@ -33,12 +33,28 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#F4F1EA",
           "image": "./assets/splash-icon.png",
-          "imageWidth": 160
+          "imageWidth": 160,
+          "dark": {
+            "backgroundColor": "#17120E",
+            "image": "./assets/splash-icon.png",
+            "imageWidth": 160
+          }
         }
-      ]
+      ],
+      "expo-sharing",
+      "expo-web-browser",
+      "expo-secure-store",
+      "expo-background-task"
     ],
+    "extra": {
+      "googleDrive": {
+        "iosClientId": "REPLACE_WITH_IOS_CLIENT_ID.apps.googleusercontent.com",
+        "androidClientId": "REPLACE_WITH_ANDROID_CLIENT_ID.apps.googleusercontent.com",
+        "webClientId": "REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com"
+      }
+    },
     "experiments": {
       "typedRoutes": false
     }

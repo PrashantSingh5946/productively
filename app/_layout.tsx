@@ -15,8 +15,13 @@ import { InstrumentSans_400Regular } from '@expo-google-fonts/instrument-sans/40
 import { InstrumentSans_500Medium } from '@expo-google-fonts/instrument-sans/500Medium';
 import { InstrumentSans_600SemiBold } from '@expo-google-fonts/instrument-sans/600SemiBold';
 import { InstrumentSans_700Bold } from '@expo-google-fonts/instrument-sans/700Bold';
-import { StoreProvider } from '../src/store';
+import { StoreProvider, useStore } from '../src/store';
+import { BackupProvider } from '../src/backup/context';
+// Side-effect import: TaskManager.defineTask has to run before the OS can hand
+// us a background wake-up, and it must happen at module scope.
+import '../src/backup/task';
 import { C } from '../src/theme';
+import { ThemeProvider, useT, useThemeInfo } from '../src/theming';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -35,35 +40,57 @@ export default function RootLayout() {
     if (loaded) SplashScreen.hideAsync().catch(() => {});
   }, [loaded]);
 
-  if (!loaded) return <View style={{ flex: 1, backgroundColor: C.white }} />;
+  if (!loaded) return <View style={{ flex: 1, backgroundColor: C.paper }} />;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StoreProvider>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: C.white },
-              animation: 'slide_from_right',
-            }}
-          >
-            <Stack.Screen name="index" options={{ animation: 'fade' }} />
-            <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-            <Stack.Screen name="run/[id]" options={{ animation: 'fade' }} />
-            <Stack.Screen name="free" options={{ presentation: 'modal' }} />
-            <Stack.Screen
-              name="task-picker"
-              options={{
-                presentation: 'transparentModal',
-                animation: 'fade',
-                contentStyle: { backgroundColor: 'transparent' },
-              }}
-            />
-          </Stack>
+          <BackupProvider>
+            <Themed />
+          </BackupProvider>
         </StoreProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** Sits inside the store so the accent and theme preference can drive the tokens. */
+function Themed() {
+  const { state } = useStore();
+  return (
+    <ThemeProvider accent={state.settings.accent} pref={state.settings.theme}>
+      <Navigation />
+    </ThemeProvider>
+  );
+}
+
+function Navigation() {
+  const t = useT();
+  const { mode } = useThemeInfo();
+  return (
+    <>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: t.paper },
+          animation: 'slide_from_right',
+        }}
+      >
+        <Stack.Screen name="index" options={{ animation: 'fade' }} />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        <Stack.Screen name="run/[id]" options={{ animation: 'fade' }} />
+        <Stack.Screen name="free" options={{ presentation: 'modal' }} />
+        <Stack.Screen
+          name="task-picker"
+          options={{
+            presentation: 'transparentModal',
+            animation: 'fade',
+            contentStyle: { backgroundColor: 'transparent' },
+          }}
+        />
+      </Stack>
+    </>
   );
 }

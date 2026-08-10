@@ -73,7 +73,7 @@ export function WheelSheet({
         </Tap>
         <Tap onPress={() => onDone(options[idx])} style={{ flex: 1 }}>
           <Grad colors={G.ink} diag style={BTN}>
-            <T d size={17} weight={700} color={C.white}>
+            <T d size={17} weight={700} color={C.onInk}>
               Done
             </T>
           </Grad>

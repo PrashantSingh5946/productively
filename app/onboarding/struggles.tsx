@@ -6,13 +6,15 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Grad, Spacer, T, Tap } from '../../src/ui';
+import { Button, CheckCoin, Row, Spacer, T, Tap, rowSkin, tintSkin } from '../../src/ui';
 import { StepHeader } from '../../src/components/OnboardingChrome';
-import { C, G } from '../../src/theme';
+import { C, RADIUS } from '../../src/theme';
 import { STRUGGLES } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function Struggles() {
+  useT();
   const insets = useSafeAreaInsets();
   const { set } = useStore();
   const [picked, setPicked] = useState<string[]>([]);
@@ -34,7 +36,7 @@ export default function Struggles() {
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 22,
         paddingHorizontal: 22,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
       }}
     >
       <StepHeader progress={0.48} />
@@ -51,17 +53,25 @@ export default function Struggles() {
           const on = picked.includes(s);
           return (
             <Tap key={s} onPress={() => toggle(s)}>
-              <Grad colors={on ? G.accent : G.card} diag={on} style={{ borderRadius: 16 }}>
+              <Row
+                gap={12}
+                style={[
+                  { borderRadius: RADIUS.tile, paddingVertical: 16, paddingHorizontal: 20 },
+                  on ? tintSkin() : rowSkin(),
+                  on && { backgroundColor: C.accentTintFrom },
+                ]}
+              >
                 <T
                   size={15.5}
-                  weight={600}
+                  weight={on ? 700 : 600}
                   lh={21}
-                  color={on ? C.ink : C.textMid}
-                  style={{ paddingVertical: 19, paddingHorizontal: 22 }}
+                  color={on ? C.accentText : C.textMid}
+                  style={{ flex: 1 }}
                 >
                   {s}
                 </T>
-              </Grad>
+                <CheckCoin size={24} on={on} />
+              </Row>
             </Tap>
           );
         })}

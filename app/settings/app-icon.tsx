@@ -3,18 +3,20 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Row, T, Tap, TopBar } from '../../src/ui';
+import { CheckCoin, Grad, T, Tap, TopBar, rowSkin, tintSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
-import { C, G } from '../../src/theme';
+import { C, RADIUS } from '../../src/theme';
 import { APP_ICONS } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function AppIconSettings() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top, paddingHorizontal: 20 }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
       <TopBar onBack={() => router.back()} />
 
       <T d size={30} weight={800} style={{ marginTop: 16 }}>
@@ -36,27 +38,40 @@ export default function AppIconSettings() {
                 })
               }
             >
-              <Grad colors={G.card} style={ROW}>
+              <View
+                style={[
+                  ROW,
+                  on
+                    ? [{ backgroundColor: C.accentTintFrom }, tintSkin()]
+                    : rowSkin(),
+                ]}
+              >
                 <Grad
                   colors={ic.bg}
                   diag
                   style={[
                     TILE,
-                    ic.border && { borderWidth: 1.5, borderColor: C.border },
+                    ic.border && { borderWidth: 1.5, borderColor: C.hairlineStrong },
                   ]}
                 >
                   <Icon name="logo" size={36} color={ic.fg} />
                 </Grad>
-                <T d size={17} weight={700} style={{ flex: 1 }}>
+                <T
+                  d
+                  size={17}
+                  weight={700}
+                  color={on ? C.accentText : C.ink}
+                  style={{ flex: 1 }}
+                >
                   {ic.name}
                 </T>
-                {on ? <Icon name="check" size={22} color={C.ink} /> : null}
-              </Grad>
+                <CheckCoin size={26} on={on} />
+              </View>
             </Tap>
           );
         })}
 
-        <T size={13} lh={20} color={C.ghost} style={{ marginTop: 8 }}>
+        <T size={13} lh={20} color={C.muted} style={{ marginTop: 8 }}>
           Every icon is included — nothing here is locked or paid for.
         </T>
       </ScrollView>
@@ -70,13 +85,14 @@ const ROW = {
   gap: 18,
   paddingVertical: 14,
   paddingHorizontal: 18,
-  borderRadius: 20,
+  borderRadius: RADIUS.row,
+  minHeight: 44,
 };
 
 const TILE = {
   width: 58,
   height: 58,
-  borderRadius: 18,
+  borderRadius: RADIUS.tile,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };

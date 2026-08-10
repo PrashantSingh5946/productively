@@ -6,9 +6,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Row, T } from '../../src/ui';
 import { StepHeader, Wheel } from '../../src/components/OnboardingChrome';
 import { Icon } from '../../src/icons';
-import { C } from '../../src/theme';
+import { C, TASK_TONES } from '../../src/theme';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export const HOURS = ['4', '5', '6', '7', '8', '9', '10', '11', '12'];
 export const MINUTES = ['00', '15', '30', '45'];
 export const MERIDIEM = ['AM', 'PM'];
@@ -20,6 +21,7 @@ export function to24(hIdx: number, mIdx: number, pmIdx: number) {
 }
 
 export default function Wake() {
+  useT();
   const insets = useSafeAreaInsets();
   const { set } = useStore();
   const [h, setH] = useState(4); // 8
@@ -40,7 +42,7 @@ export default function Wake() {
         paddingTop: insets.top,
         paddingBottom: insets.bottom + 22,
         paddingHorizontal: 22,
-        backgroundColor: C.white,
+        backgroundColor: C.paper,
       }}
     >
       <StepHeader progress={0.26} />
@@ -49,7 +51,7 @@ export default function Wake() {
         <T d size={30} weight={800} lh={37} center style={{ flexShrink: 1 }}>
           When does your day begin?
         </T>
-        <Icon name="sun" size={28} color="#8A807A" />
+        <Icon name="sun" size={28} color={TASK_TONES.sun.fg} />
       </Row>
       <T size={15} lh={21} center color={C.muted} style={{ marginTop: 12 }}>
         We'll suggest a routine that suits your mornings.

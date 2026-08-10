@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
+import { C, IDENTITY } from './theme';
 
 export type IconName =
   | 'chevL' | 'chevR' | 'chevD' | 'arrowUR' | 'plus' | 'check' | 'x'
@@ -13,7 +14,8 @@ export type IconName =
   | 'skip' | 'search' | 'people' | 'chart' | 'user' | 'note' | 'trophy'
   | 'flame' | 'leaf' | 'ring' | 'sun' | 'moon' | 'drop' | 'bottle' | 'bed'
   | 'heart' | 'book' | 'cup' | 'screen' | 'pencil' | 'dumbbell' | 'pill'
-  | 'target' | 'list' | 'rows' | 'img' | 'shield' | 'mail' | 'logo';
+  | 'target' | 'list' | 'rows' | 'img' | 'shield' | 'mail' | 'logo'
+  | 'cloud' | 'cloudUp' | 'cloudDown' | 'download' | 'trash' | 'refresh';
 
 type Props = { name: IconName; size?: number; color?: string; opacity?: number };
 
@@ -26,8 +28,8 @@ const S = (w: number, extra: object = {}) => ({
   ...extra,
 });
 
-export function Icon({ name, size = 24, color = '#241F1C', opacity }: Props) {
-  const c = color;
+export function Icon({ name, size = 24, color, opacity }: Props) {
+  const c = color ?? C.ink;
   const vb = name === 'logo' ? '0 0 40 40' : '0 0 24 24';
 
   return (
@@ -355,7 +357,7 @@ function body(name: IconName, c: string): React.ReactNode {
             d="M4.9 12.4 12.4 4.9a4.6 4.6 0 0 1 6.6 6.6l-7.5 7.5a4.6 4.6 0 0 1-6.6-6.6z"
             fill={c}
           />
-          <Path d="M8.6 8.6 15.4 15.4" stroke="#fff" strokeWidth={1.8} />
+          <Path d="M8.6 8.6 15.4 15.4" stroke={C.card} strokeWidth={1.8} />
         </G>
       );
     case 'target':
@@ -405,6 +407,38 @@ function body(name: IconName, c: string): React.ReactNode {
           <Path d="m3.8 7 8.2 6 8.2-6" />
         </G>
       );
+    // One cloud silhouette, three payloads — the backup screens read as a set.
+    case 'cloud':
+    case 'cloudUp':
+    case 'cloudDown':
+      return (
+        <G stroke={c} {...S(1.9)}>
+          <Path d="M7.2 18.5A4.2 4.2 0 0 1 6.8 10.2 5.6 5.6 0 0 1 17.6 9.4a3.9 3.9 0 0 1 .6 7.7z" />
+          {name === 'cloudUp' ? <Path d="M12 20.5v-6m0 0-2.2 2.2M12 14.5l2.2 2.2" /> : null}
+          {name === 'cloudDown' ? <Path d="M12 14.5v6m0 0-2.2-2.2M12 20.5l2.2-2.2" /> : null}
+        </G>
+      );
+    case 'download':
+      return (
+        <G stroke={c} {...S(1.9)}>
+          <Path d="M12 3.5v11m0 0-4-4m4 4 4-4" />
+          <Path d="M4.5 16.5v2.2a1.8 1.8 0 0 0 1.8 1.8h11.4a1.8 1.8 0 0 0 1.8-1.8v-2.2" />
+        </G>
+      );
+    case 'trash':
+      return (
+        <G stroke={c} {...S(1.9)}>
+          <Path d="M4.5 6.5h15M9.5 6.5V4.8a1.3 1.3 0 0 1 1.3-1.3h2.4a1.3 1.3 0 0 1 1.3 1.3v1.7" />
+          <Path d="M6.6 6.5l.9 12.2a1.8 1.8 0 0 0 1.8 1.7h5.4a1.8 1.8 0 0 0 1.8-1.7l.9-12.2" />
+        </G>
+      );
+    case 'refresh':
+      return (
+        <G stroke={c} {...S(1.9)}>
+          <Path d="M20 12a8 8 0 1 1-2.6-5.9" />
+          <Path d="M20 4v4.4h-4.4" />
+        </G>
+      );
     case 'logo':
       return (
         <G fill={c}>
@@ -422,24 +456,25 @@ function body(name: IconName, c: string): React.ReactNode {
 export function MoodFace({
   level,
   size = 26,
-  color = '#D8A288',
+  color,
 }: {
   level: 0 | 1 | 2 | 3 | 4;
   size?: number;
   color?: string;
 }) {
+  const c = color ?? IDENTITY.moodFace;
   const s = S(level === 3 ? 1.9 : 1.8);
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
       {level === 4 ? (
-        <G stroke={color} {...s}>
+        <G stroke={c} {...s}>
           <Path d="M6.8 9.6a2.4 2.4 0 0 1 3.6 0M13.6 9.6a2.4 2.4 0 0 1 3.6 0" />
           <Path d="M7.8 14a5.2 5.2 0 0 0 8.4 0" />
         </G>
       ) : (
-        <G stroke={color} {...s}>
-          <Circle cx="8.6" cy={level === 3 ? '9.4' : '9.6'} r={level === 3 ? 1 : 0.9} fill={color} />
-          <Circle cx="15.4" cy={level === 3 ? '9.4' : '9.6'} r={level === 3 ? 1 : 0.9} fill={color} />
+        <G stroke={c} {...s}>
+          <Circle cx="8.6" cy={level === 3 ? '9.4' : '9.6'} r={level === 3 ? 1 : 0.9} fill={c} />
+          <Circle cx="15.4" cy={level === 3 ? '9.4' : '9.6'} r={level === 3 ? 1 : 0.9} fill={c} />
           {level === 0 && <Path d="M8.4 16.4a4.6 4.6 0 0 1 7.2 0" />}
           {level === 1 && <Path d="M8.6 15.6h6.8" />}
           {level === 2 && <Path d="M8.6 15.2h6.8" />}

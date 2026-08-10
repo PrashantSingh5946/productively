@@ -4,7 +4,8 @@
  * install, so these numbers are the ones drawn on the screens.
  */
 import { IconName } from './icons';
-import { TaskTone } from './theme';
+import { C, IDENTITY, TaskTone } from './theme';
+import { TASK_ICON_FG } from './tokens';
 
 export type Task = {
   id: string;
@@ -221,12 +222,15 @@ export const TIME_SPENT = [
 ] as { taskId: string; title: string; icon: IconName; tone: TaskTone; pct: number; avg: string; over: boolean }[];
 
 export const MOMENTUM_TIERS = [
-  { name: 'First light', range: 'day 1', from: 1, to: 1, color: '#FFD9C6' },
-  { name: 'Warm-up', range: 'days 2 – 3', from: 2, to: 3, color: '#FFB894' },
-  { name: 'Rhythm', range: 'days 4 – 7', from: 4, to: 7, color: '#FF9E73' },
-  { name: 'Momentum', range: 'days 8 – 14', from: 8, to: 14, color: '#FF8A5B' },
-  { name: 'Groove', range: 'days 15 – 21', from: 15, to: 21, color: '#D95D2B' },
+  { name: 'First light', range: 'day 1', from: 1, to: 1, step: 0 },
+  { name: 'Warm-up', range: 'days 2 – 3', from: 2, to: 3, step: 1 },
+  { name: 'Rhythm', range: 'days 4 – 7', from: 4, to: 7, step: 2 },
+  { name: 'Momentum', range: 'days 8 – 14', from: 8, to: 14, step: 3 },
+  { name: 'Groove', range: 'days 15 – 21', from: 15, to: 21, step: 4 },
 ];
+
+/** Live colour for a momentum step — reads the accent ramp, so it recolours. */
+export const stepColor = (step: number) => C.accentRamp[Math.min(step, C.accentRamp.length - 1)];
 
 /* ── explore ──────────────────────────────────────────────────────── */
 
@@ -253,7 +257,7 @@ export const TEMPLATES: Template[] = [
       "Short enough to survive a bad night's sleep. Six small anchors that get you out of bed, hydrated and pointed at one clear thing before the day starts asking for you.",
     minutes: 30,
     icon: 'sun',
-    iconColor: '#FF9F6D',
+    iconColor: TASK_ICON_FG.sun,
     badge: { label: 'POPULAR', tone: 'popular' },
     using: '14.2k using',
     category: 'Morning',
@@ -274,7 +278,7 @@ export const TEMPLATES: Template[] = [
       'For mornings that already feel loud. Nothing here asks for effort you have not got — it just puts the first three decisions of the day on rails.',
     minutes: 22,
     icon: 'bottle',
-    iconColor: '#5B9EE0',
+    iconColor: TASK_ICON_FG.water,
     badge: { label: 'BEGINNER', tone: 'beginner' },
     category: 'Morning',
     tasks: [
@@ -293,7 +297,7 @@ export const TEMPLATES: Template[] = [
       'Movement first, decisions second. Best on the days you already know you will be sitting down for eight hours.',
     minutes: 26,
     icon: 'dumbbell',
-    iconColor: '#8A807A',
+    iconColor: TASK_ICON_FG.pencil,
     category: 'Morning',
     tasks: [
       t('en-1', 'Cold shower', 'drop', 'drop', 3),
@@ -310,7 +314,7 @@ export const TEMPLATES: Template[] = [
       'A short sequence that tells your head the day is finished, so the evening does not get spent half-working.',
     minutes: 18,
     icon: 'moon',
-    iconColor: '#8A807A',
+    iconColor: TASK_ICON_FG.pencil,
     category: 'Evening',
     tasks: [
       t('sd-1', 'Clear the inbox to zero', 'mail', 'cal', 6),
@@ -326,7 +330,7 @@ export const TEMPLATES: Template[] = [
     about: 'A single protected stretch with a warm-up and a hard stop on either side.',
     minutes: 60,
     icon: 'target',
-    iconColor: '#7D8FC4',
+    iconColor: TASK_ICON_FG.target,
     category: 'Focus',
     tasks: [
       t('sp-1', 'Silence notifications', 'screen', 'screen', 1),
@@ -342,7 +346,7 @@ export const TEMPLATES: Template[] = [
     about: 'Enough structure to stop the day evaporating, not so much that it becomes work.',
     minutes: 40,
     icon: 'leaf',
-    iconColor: '#7FA98F',
+    iconColor: TASK_ICON_FG.leaf,
     category: 'Rest',
     tasks: [
       t('su-1', 'Walk without a podcast', 'leaf', 'leaf', 20),
@@ -356,20 +360,18 @@ export const RESET_CARDS = [
   {
     id: 'anxious',
     title: 'When you feel\nanxious',
-    tagBg: '#BD3B34',
-    bg: '#FDF3F3',
-    iconBg: '#FBE6E6',
+    tone: 'alert' as const,
+    tagBg: IDENTITY.tagAlert,
     icon: 'heart' as IconName,
-    iconColor: '#DC8A88',
+    iconColor: IDENTITY.tagAlertIcon,
   },
   {
     id: 'breath',
     title: 'When breathing\nfeels hard',
-    tagBg: '#2F9C78',
-    bg: '#EEF7F3',
-    iconBg: '#DCEFE7',
+    tone: 'fresh' as const,
+    tagBg: IDENTITY.tagFresh,
     icon: 'leaf' as IconName,
-    iconColor: '#68B39A',
+    iconColor: IDENTITY.tagFreshIcon,
   },
 ];
 
@@ -395,7 +397,8 @@ export type Friend = {
   status: string;
   avatarBg: string;
   avatarFg: string;
-  tierColor?: string;
+  /** Index into the accent ramp — the friend's streak tier. */
+  tierStep?: number;
   running?: boolean;
   quiet?: boolean;
   bookmarked?: boolean;
@@ -406,34 +409,34 @@ export const FRIENDS: Friend[] = [
     id: 'meera',
     name: 'Meera',
     status: 'Running Morning routine now',
-    avatarBg: '#FFFFFF',
-    avatarFg: '#CF6A3F',
-    tierColor: '#FF8A5B',
+    avatarBg: IDENTITY.avatarSage,
+    avatarFg: IDENTITY.avatarSandInk,
+    tierStep: 3,
     running: true,
   },
   {
     id: 'daran',
     name: 'Daran',
     status: 'Finished 2h ago · 31 days',
-    avatarBg: '#E6DED2',
-    avatarFg: '#B09B7F',
-    tierColor: '#D95D2B',
+    avatarBg: IDENTITY.avatarSand,
+    avatarFg: IDENTITY.avatarSandInk,
+    tierStep: 4,
     bookmarked: true,
   },
   {
     id: 'althea',
     name: 'Althea',
     status: 'Finished 5h ago · 6 days',
-    avatarBg: '#DFE7E2',
-    avatarFg: '#95AB9F',
-    tierColor: '#FFB894',
+    avatarBg: IDENTITY.avatarMoss,
+    avatarFg: IDENTITY.avatarMossInk,
+    tierStep: 1,
   },
   {
     id: 'rue',
     name: 'Rue',
     status: 'Quiet for 3 days',
-    avatarBg: '#E4E2EE',
-    avatarFg: '#A09CBB',
+    avatarBg: IDENTITY.avatarIris,
+    avatarFg: IDENTITY.avatarIrisInk,
     quiet: true,
   },
 ];
@@ -445,7 +448,7 @@ export type FeedPost = {
   ago: string;
   avatarBg: string;
   avatarFg: string;
-  tierColor: string;
+  tierStep: number;
   routines: string[];
   duration: string;
   window: string;
@@ -459,17 +462,17 @@ export const FEED: FeedPost[] = [
     friendId: 'daran',
     name: 'Daran',
     ago: '2h ago',
-    avatarBg: '#E6DED2',
-    avatarFg: '#B09B7F',
-    tierColor: '#D95D2B',
+    avatarBg: IDENTITY.avatarSand,
+    avatarFg: IDENTITY.avatarSandInk,
+    tierStep: 4,
     routines: ['Morning routine', 'Night routine'],
     duration: '11m 30s',
     window: '9:00am – 9:11am',
     tasks: [
-      { title: 'Play something instrumental', icon: 'leaf', color: '#7FA98F', len: '30s' },
-      { title: 'Make the bed', icon: 'bed', color: '#B39A6D', len: '1m' },
-      { title: 'Cold shower', icon: 'drop', color: '#5B9EE0', len: '1m' },
-      { title: 'Three lines in the journal', icon: 'pencil', color: '#8A807A', len: '2m' },
+      { title: 'Play something instrumental', icon: 'leaf', color: TASK_ICON_FG.leaf, len: '30s' },
+      { title: 'Make the bed', icon: 'bed', color: TASK_ICON_FG.bed, len: '1m' },
+      { title: 'Cold shower', icon: 'drop', color: TASK_ICON_FG.drop, len: '1m' },
+      { title: 'Three lines in the journal', icon: 'pencil', color: TASK_ICON_FG.pencil, len: '2m' },
     ],
     more: 3,
   },
@@ -478,16 +481,16 @@ export const FEED: FeedPost[] = [
     friendId: 'althea',
     name: 'Althea',
     ago: '5h ago',
-    avatarBg: '#DFE7E2',
-    avatarFg: '#95AB9F',
-    tierColor: '#FFB894',
+    avatarBg: IDENTITY.avatarMoss,
+    avatarFg: IDENTITY.avatarMossInk,
+    tierStep: 1,
     routines: ['Evening reset'],
     duration: '18m 04s',
     window: '8:40pm – 8:58pm',
     tasks: [
-      { title: 'Tea before bed', icon: 'cup', color: '#C19A5B', len: '5m' },
-      { title: 'Screens off', icon: 'screen', color: '#8A807A', len: '2m' },
-      { title: 'Read ten pages', icon: 'book', color: '#C19A5B', len: '10m' },
+      { title: 'Tea before bed', icon: 'cup', color: TASK_ICON_FG.cup, len: '5m' },
+      { title: 'Screens off', icon: 'screen', color: TASK_ICON_FG.pencil, len: '2m' },
+      { title: 'Read ten pages', icon: 'book', color: TASK_ICON_FG.book, len: '10m' },
     ],
     more: 1,
   },
@@ -650,15 +653,28 @@ export const FIRST_ROUTINE_TASKS: Task[] = [
   t('f3', 'Give yourself a pep talk', 'heart', 'heart', 3),
 ];
 
-export const APP_ICONS = [
-  { id: 'default', name: 'Default', bg: ['#FFA47C', '#FF7A45'], fg: '#241F1C' },
-  { id: 'paper', name: 'Paper', bg: ['#FFFFFF', '#FFFFFF'], fg: '#D95D2B', border: true },
-  { id: 'gentle', name: 'Gentle day', bg: ['#FFE4D5', '#FF8A5B'], fg: '#8F3D22' },
-  { id: 'deep', name: 'Deep immersion', bg: ['#453D36', '#241F1C'], fg: '#FF8A5B' },
-  { id: 'calm', name: 'Calm mind', bg: ['#EEF0F2', '#EEF0F2'], fg: '#9AA0A8' },
-  { id: 'clay', name: 'Clay', bg: ['#F3E6DD', '#F3E6DD'], fg: '#A8492A' },
-  { id: 'soft', name: 'Soft start', bg: ['#FFF0E7', '#FFDCCB'], fg: '#D95D2B' },
-];
+const APP_ICON_NAMES: Record<keyof typeof IDENTITY.icons, string> = {
+  default: 'Default',
+  paper: 'Paper',
+  gentle: 'Gentle day',
+  deep: 'Deep immersion',
+  calm: 'Calm mind',
+  clay: 'Clay',
+  soft: 'Soft start',
+  sky: 'Sky',
+  moss: 'Moss',
+  orchid: 'Orchid',
+};
+
+export type AppIcon = { id: string; name: string; bg: readonly string[]; fg: string; border?: boolean };
+
+export const APP_ICONS: AppIcon[] = (
+  Object.keys(IDENTITY.icons) as (keyof typeof IDENTITY.icons)[]
+).map((id) => {
+  const art = IDENTITY.icons[id] as { bg: readonly string[]; fg: string; border?: boolean };
+  return { id, name: APP_ICON_NAMES[id], bg: art.bg, fg: art.fg, border: art.border };
+});
+
 
 /* ── helpers ──────────────────────────────────────────────────────── */
 

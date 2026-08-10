@@ -4,6 +4,13 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setHapticsEnabled } from './haptics';
+import { AccentKey, isAccentKey } from './tokens';
+import {
+  BackupSettings,
+  DEFAULT_BACKUP_SETTINGS,
+  normalizeBackupSettings,
+} from './backup/settings';
+import { STATE_KEY } from './storageKeys';
 import React, {
   createContext,
   useCallback,
@@ -26,11 +33,13 @@ import {
   totalMinutes,
 } from './data';
 
-const KEY = 'productively/state/v1';
+const KEY = STATE_KEY;
 
 export type Settings = {
   language: string;
   theme: 'Light' | 'Dark' | 'System';
+  /** v2 accent preset — one of ACCENT_KEYS. Persisted with the account. */
+  accent: AccentKey;
   appIcon: string;
   timeFormat12: boolean;
   weekStart: 'Sun' | 'Mon';
@@ -51,7 +60,8 @@ export type Settings = {
     summary: boolean;
     moodReview: boolean;
   };
-  backupOn: boolean;
+  /** Google Drive sync preferences. See src/backup/settings.ts. */
+  backup: BackupSettings;
 };
 
 export type Profile = {
@@ -97,7 +107,8 @@ const initial: State = {
   nudged: [],
   settings: {
     language: 'English',
-    theme: 'Light',
+    theme: 'System',
+    accent: 'ember',
     appIcon: 'default',
     timeFormat12: true,
     weekStart: 'Sun',
@@ -118,7 +129,7 @@ const initial: State = {
       summary: true,
       moodReview: true,
     },
-    backupOn: true,
+    backup: DEFAULT_BACKUP_SETTINGS,
   },
 };
 
@@ -130,6 +141,8 @@ type Ctx = {
   routine: (id: string) => Routine | undefined;
   completedToday: (routineId: string) => Session | undefined;
   set: (fn: (draft: State) => void) => void;
+  /** Swap the whole state at once — what a restore does. */
+  replaceState: (next: State) => void;
   finishRun: (s: Omit<Session, 'id' | 'day'>) => void;
   toggleChecklistItem: (groupId: string, itemId: string) => void;
   addChecklistItem: (groupId: string, title: string) => void;
@@ -158,12 +171,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(KEY);
         if (raw) {
           const saved = JSON.parse(raw) as Partial<State>;
-          setState((s) => ({
-            ...s,
-            ...saved,
-            settings: { ...s.settings, ...(saved.settings ?? {}) },
-            profile: { ...s.profile, ...(saved.profile ?? {}) },
-          }));
+          setState((s) => {
+            const raw = (saved.settings ?? {}) as Partial<Settings> & { backupOn?: boolean };
+            const settings = { ...s.settings, ...raw };
+            // Caches written before the accent existed, or hand-edited ones.
+            if (!isAccentKey(settings.accent)) settings.accent = 'ember';
+            // `backupOn` was the pre-Drive boolean; carry it into the object.
+            settings.backup = normalizeBackupSettings(raw.backup, raw.backupOn);
+            return {
+              ...s,
+              ...saved,
+              settings,
+              profile: { ...s.profile, ...(saved.profile ?? {}) },
+            };
+          });
         }
       } catch {
         // A corrupt cache should never block the app — fall back to the seed.
@@ -202,6 +223,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       routine,
       completedToday,
       set,
+      replaceState: (next) =>
+        // Restores can arrive from an older build, so the same repairs the
+        // hydration path applies have to run here too.
+        setState((s) => {
+          const settings = { ...s.settings, ...(next.settings ?? {}) };
+          if (!isAccentKey(settings.accent)) settings.accent = 'ember';
+          settings.backup = normalizeBackupSettings(settings.backup);
+          return { ...s, ...next, settings, profile: { ...s.profile, ...(next.profile ?? {}) } };
+        }),
       streakFor: (routineId) => {
         const base = routine(routineId)?.streak ?? 0;
         return completedToday(routineId) ? base + 1 : base;

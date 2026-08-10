@@ -9,7 +9,9 @@ import { C, G, TASK_TONES } from '../src/theme';
 import { PICKER_TASKS } from '../src/data';
 import { useStore } from '../src/store';
 
+import { useT } from '../src/theming';
 export default function TaskPicker() {
+  useT();
   const { routineId } = useLocalSearchParams<{ routineId?: string }>();
   const insets = useSafeAreaInsets();
   const { state, addTasksToRoutine } = useStore();
@@ -30,8 +32,8 @@ export default function TaskPicker() {
     <View style={{ flex: 1, backgroundColor: 'rgba(20,20,24,0.4)' }}>
       <Pressable style={{ flex: 1 }} onPress={() => router.back()} />
 
-      <View style={[SHEET, { paddingBottom: insets.bottom + 24 }]}>
-        <View style={GRABBER} />
+      <View style={[SHEET(), { paddingBottom: insets.bottom + 24 }]}>
+        <View style={GRABBER()} />
 
         <T d size={26} weight={800} lh={32} center>
           Find tasks that fit you
@@ -55,7 +57,7 @@ export default function TaskPicker() {
                         on && { borderWidth: 1.5, borderColor: C.accentWashBorder },
                       ]}
                     >
-                      <View style={TILE_ICON}>
+                      <View style={TILE_ICON()}>
                         <Icon name={t.icon} size={20} color={TASK_TONES[t.tone].fg} />
                       </View>
                       <T size={13.5} weight={600} lh={17} style={{ flex: 1 }}>
@@ -90,22 +92,22 @@ const rows = <T,>(xs: T[]): T[][] =>
     return acc;
   }, []);
 
-const SHEET = {
-  backgroundColor: C.white,
+const SHEET = () => ({
+  backgroundColor: C.card,
   borderTopLeftRadius: 26,
   borderTopRightRadius: 26,
   paddingHorizontal: 20,
   paddingTop: 14,
-};
+});
 
-const GRABBER = {
+const GRABBER = () => ({
   width: 56,
   height: 5,
   borderRadius: 3,
   backgroundColor: C.borderStrong,
   alignSelf: 'center' as const,
   marginBottom: 20,
-};
+});
 
 const TILE = {
   flexDirection: 'row' as const,
@@ -116,11 +118,11 @@ const TILE = {
   borderRadius: 16,
 };
 
-const TILE_ICON = {
+const TILE_ICON = () => ({
   width: 38,
   height: 38,
   borderRadius: 12,
-  backgroundColor: C.white,
+  backgroundColor: C.card,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-};
+});

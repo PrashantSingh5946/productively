@@ -6,28 +6,30 @@ import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Grad, Row, T, Tap } from '../../src/ui';
+import { Button, Grad, Row, T, Tap, cardSkin, rowSkin } from '../../src/ui';
 import { StepHeader } from '../../src/components/OnboardingChrome';
 import { Icon } from '../../src/icons';
-import { C, G } from '../../src/theme';
+import { C, G, RADIUS, SHADOW } from '../../src/theme';
 
+import { useT } from '../../src/theming';
 export default function Permissions() {
+  useT();
   const insets = useSafeAreaInsets();
   const [age, setAge] = useState(false);
   const [news, setNews] = useState(false);
   const all = age && news;
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
       {/* Backdrop: the alarm-permission step, dimmed under the sheet. */}
-      <View style={{ flex: 1, paddingHorizontal: 22, opacity: 0.62 }} pointerEvents="none">
+      <View style={{ flex: 1, paddingHorizontal: 22, opacity: 0.62, pointerEvents: 'none' }}>
         <StepHeader progress={1} />
         <T d size={30} weight={800} lh={37} center style={{ marginTop: 30 }}>
           We'll help you remember your routine
         </T>
         <Grad
           colors={G.card}
-          style={{ marginTop: 30, borderRadius: 20, padding: 24, alignItems: 'center' }}
+          style={[{ marginTop: 30, borderRadius: RADIUS.card, padding: 24, alignItems: 'center' }, cardSkin()]}
         >
           <T d size={17} weight={700}>
             Alarm permission
@@ -40,8 +42,8 @@ export default function Permissions() {
         </Grad>
       </View>
 
-      <View style={[SHEET, { paddingBottom: insets.bottom + 24 }]}>
-        <View style={GRABBER} />
+      <View style={[SHEET(), { paddingBottom: insets.bottom + 24 }]}>
+        <View style={GRABBER()} />
         <T size={16} weight={700}>
           Before we start
         </T>
@@ -53,7 +55,7 @@ export default function Permissions() {
             setNews(v);
           }}
         >
-          <Grad colors={G.card} style={AGREE}>
+          <Grad colors={G.card} style={[AGREE, rowSkin()]}>
             <T d size={17} weight={700} style={{ flex: 1 }}>
               Agree to all
             </T>
@@ -94,31 +96,29 @@ export default function Permissions() {
   );
 }
 
-const SHEET = {
+const SHEET = () => ({
   position: 'absolute' as const,
   left: 0,
   right: 0,
   bottom: 0,
-  backgroundColor: C.white,
-  borderTopLeftRadius: 26,
-  borderTopRightRadius: 26,
+  backgroundColor: C.card,
+  borderTopLeftRadius: RADIUS.sheet,
+  borderTopRightRadius: RADIUS.sheet,
+  borderTopWidth: 1,
+  borderColor: C.hairline,
   paddingHorizontal: 22,
   paddingTop: 14,
-  shadowColor: '#000',
-  shadowOpacity: 0.16,
-  shadowRadius: 40,
-  shadowOffset: { width: 0, height: -12 },
-  elevation: 24,
-};
+  boxShadow: SHADOW.sheet,
+});
 
-const GRABBER = {
-  width: 56,
+const GRABBER = () => ({
+  width: 44,
   height: 5,
   borderRadius: 3,
-  backgroundColor: C.borderStrong,
+  backgroundColor: C.ring,
   alignSelf: 'center' as const,
   marginBottom: 18,
-};
+});
 
 const AGREE = {
   flexDirection: 'row' as const,

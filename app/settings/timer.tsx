@@ -3,11 +3,12 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Dial, Grad, Row, T, Tap, Toggle, TopBar } from '../../src/ui';
+import { Dial, Grad, Row, T, Tap, Toggle, TopBar, cardSkin } from '../../src/ui';
 import { Icon, IconName } from '../../src/icons';
 import { C, G, TASK_TONES } from '../../src/theme';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 const DISPLAYS: { key: 'clock' | 'target' | 'alarm'; icon: IconName }[] = [
   { key: 'clock', icon: 'clock' },
   { key: 'target', icon: 'target' },
@@ -15,6 +16,7 @@ const DISPLAYS: { key: 'clock' | 'target' | 'alarm'; icon: IconName }[] = [
 ];
 
 export default function TimerSettings() {
+  useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
   const t = state.settings.timer;
@@ -26,7 +28,7 @@ export default function TimerSettings() {
     });
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top, paddingHorizontal: 20 }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
       <TopBar onBack={() => router.back()} />
 
       <ScrollView
@@ -37,17 +39,17 @@ export default function TimerSettings() {
           Timer
         </T>
 
-        <Grad colors={G.card} style={PANEL}>
+        <Grad colors={G.card} style={[PANEL, cardSkin()]}>
           <T size={12.5} weight={600} color={C.faint} style={{ paddingHorizontal: 4, paddingBottom: 12 }}>
             Timer screen
           </T>
 
-          <Grad colors={['#EDE7E0', '#E4DDD5']} style={STAGE}>
-            <View style={MINI}>
+          <Grad colors={G.stone} style={STAGE}>
+            <View style={MINI()}>
               <T size={13} weight={700}>
                 Drink water
               </T>
-              <Dial size={104} thickness={8} progress={0.72} trackColor="#EFE9E3">
+              <Dial size={106} thickness={9} progress={0.72} trackColor={C.trackRing}>
                 <Icon name="bottle" size={20} color={TASK_TONES.water.fg} />
                 {t.remainingTime ? (
                   <T d size={18} weight={800}>
@@ -67,7 +69,7 @@ export default function TimerSettings() {
               <Row gap={16} style={{ marginTop: 2 }}>
                 <Icon name="pause" size={14} color={C.ghost} />
                 <Grad colors={G.ink} diag style={MINI_BTN}>
-                  <Icon name="check" size={15} color={C.white} />
+                  <Icon name="check" size={15} color={C.onInk} />
                 </Grad>
                 <Icon name="skip" size={14} color={C.ghost} />
               </Row>
@@ -84,14 +86,14 @@ export default function TimerSettings() {
             </View>
           </Grad>
 
-          <Grad colors={['#EDE7E0', '#E4DDD5']} style={SEGS}>
+          <Grad colors={G.stone} style={SEGS}>
             {DISPLAYS.map((d) => {
               const on = t.display === d.key;
               return (
                 <Tap key={d.key} onPress={() => flip('display')(d.key)} style={{ flex: 1 }}>
                   {on ? (
                     <Grad colors={G.ink} diag style={SEG_ON}>
-                      <Icon name={d.icon} size={18} color={C.white} />
+                      <Icon name={d.icon} size={18} color={C.onInk} />
                     </Grad>
                   ) : (
                     <View style={SEG_OFF}>
@@ -108,7 +110,7 @@ export default function TimerSettings() {
           <SwitchRow label="Next task" on={t.nextTask} onChange={flip('nextTask')} last />
         </Grad>
 
-        <Grad colors={G.card} style={GROUP}>
+        <Grad colors={G.card} style={[GROUP, cardSkin()]}>
           <T size={12.5} weight={600} color={C.faint} style={{ paddingBottom: 10 }}>
             Focus options
           </T>
@@ -117,7 +119,7 @@ export default function TimerSettings() {
           <SwitchRow label="Sticky notification" on={t.sticky} onChange={flip('sticky')} help pad />
         </Grad>
 
-        <Grad colors={G.card} style={GROUP}>
+        <Grad colors={G.card} style={[GROUP, cardSkin()]}>
           <T size={12.5} weight={600} color={C.faint} style={{ paddingBottom: 10 }}>
             Plug-ins
           </T>
@@ -166,15 +168,15 @@ function SwitchRow({
 const PANEL = { marginTop: 20, padding: 16, borderRadius: 22 };
 const GROUP = { marginTop: 14, paddingVertical: 16, paddingHorizontal: 18, borderRadius: 22 };
 const STAGE = { borderRadius: 18, padding: 18, alignItems: 'center' as const };
-const MINI = {
+const MINI = () => ({
   width: 174,
   borderRadius: 16,
-  backgroundColor: C.white,
+  backgroundColor: C.card,
   paddingVertical: 16,
   paddingHorizontal: 12,
   alignItems: 'center' as const,
   gap: 8,
-};
+});
 const MINI_BTN = {
   width: 30,
   height: 30,

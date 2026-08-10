@@ -4,15 +4,17 @@
  */
 import React from 'react';
 import { View } from 'react-native';
-import { Grad, Row, T, Tap } from '../ui';
+import { Card, Grad, Row, T, Tap, rowSkin } from '../ui';
 import { Icon } from '../icons';
-import { C, G, TASK_TONES } from '../theme';
+import { C, G, RADIUS, SHADOW, TASK_TONES } from '../theme';
+import { useT } from '../theming';
 import { Routine, Session, daysLabel, fmtClock, tierFor, totalMinutes } from '../data';
 import { useNow } from '../useNow';
 
 /* ── streak rail ──────────────────────────────────────────────────── */
 
 export function StreakRail({ streak, onPress }: { streak: number; onPress?: () => void }) {
+  const t = useT();
   const tier = tierFor(streak);
   // Today, tomorrow, the tier's trophy day, then two beyond.
   const slots: ({ kind: 'done' | 'next' | 'far'; day: number } | { kind: 'trophy' })[] = [
@@ -25,37 +27,41 @@ export function StreakRail({ streak, onPress }: { streak: number; onPress?: () =
 
   return (
     <Tap onPress={onPress}>
-      <Grad colors={G.card} style={RAIL}>
+      <View style={[RAIL, rowSkin()]}>
         {slots.map((s, i) => (
           <React.Fragment key={i}>
-            {i > 0 ? <View style={{ flex: 1, height: 2, backgroundColor: '#E6DFD8' }} /> : null}
+            {i > 0 ? <View style={{ flex: 1, height: 2, backgroundColor: C.stoneLine }} /> : null}
             {s.kind === 'trophy' ? (
-              <Grad colors={G.well} style={NODE}>
-                <Icon name="trophy" size={17} color={C.faint} />
-              </Grad>
+              <View style={[NODE, { backgroundColor: t.stone }]}>
+                <Icon name="trophy" size={17} color={t.muted} />
+              </View>
             ) : s.kind === 'done' ? (
               <Grad colors={G.accent} diag style={NODE}>
-                <T size={14} weight={700} color={C.ink}>
+                <T size={14} weight={700} color={t.accentOn}>
                   {s.day}
                 </T>
               </Grad>
             ) : s.kind === 'next' ? (
-              <Grad colors={G.accentTint} diag style={NODE}>
-                <T size={14} weight={700} color={C.accentInk}>
+              <Grad
+                colors={G.accentTint}
+                diag
+                style={[NODE, { borderWidth: 1.5, borderColor: t.accentTintBorder }]}
+              >
+                <T size={14} weight={700} color={t.accentText}>
                   {s.day}
                 </T>
               </Grad>
             ) : (
-              <Grad colors={G.well} style={NODE}>
-                <T size={14} weight={700} color={C.faint}>
+              <View style={[NODE, { backgroundColor: t.stone }]}>
+                <T size={14} weight={700} color={t.faint}>
                   {s.day}
                 </T>
-              </Grad>
+              </View>
             )}
           </React.Fragment>
         ))}
-        <Icon name="chevR" size={17} color={C.ghost} />
-      </Grad>
+        <Icon name="chevR" size={17} color={t.faint} />
+      </View>
     </Tap>
   );
 }
@@ -67,7 +73,7 @@ const RAIL = {
   marginTop: 16,
   paddingVertical: 13,
   paddingHorizontal: 14,
-  borderRadius: 18,
+  borderRadius: RADIUS.row,
 };
 
 const NODE = {
@@ -104,19 +110,12 @@ export function RoutineCard({
   onOpen: () => void;
   onRun: () => void;
 }) {
-  const metaColor = next ? C.accentInk : C.muted;
+  const t = useT();
+  const metaColor = next ? t.accentText : t.muted;
   const done = !!session;
 
   return (
-    <Tap onPress={onOpen}>
-      <Grad
-        colors={next ? G.accentWash : G.card}
-        diag={next}
-        style={[
-          CARD,
-          next && { borderWidth: 1.5, borderColor: C.accentWashBorder },
-        ]}
-      >
+    <Card tinted={next} onPress={onOpen} style={CARD}>
         <Row gap={14}>
           {showStart !== false ? (
             <Row gap={6}>
@@ -156,12 +155,12 @@ export function RoutineCard({
           </T>
           <Tap onPress={onRun}>
             {next ? (
-              <Grad colors={G.accent} diag style={PLAY}>
-                <Icon name="play" size={20} color={C.ink} />
+              <Grad colors={G.accent} diag style={[PLAY, { boxShadow: SHADOW.icon }]}>
+                <Icon name="play" size={20} color={t.accentOn} />
               </Grad>
             ) : (
-              <View style={[PLAY, { backgroundColor: C.border }]}>
-                <Icon name="play" size={20} color={C.text} />
+              <View style={[PLAY, rowSkin()]}>
+                <Icon name="play" size={20} color={t.ink} />
               </View>
             )}
           </Tap>
@@ -169,26 +168,25 @@ export function RoutineCard({
 
         {showIcons ? (
           <Row gap={7} style={{ marginTop: 14 }}>
-            {routine.tasks.slice(0, 4).map((t) => (
-              <View key={t.id} style={CHIP}>
-                <Icon name={t.icon} size={17} color={TASK_TONES[t.tone].fg} />
+            {routine.tasks.slice(0, 4).map((task) => (
+              <View key={task.id} style={[CHIP(), { backgroundColor: TASK_TONES[task.tone].bg }]}>
+                <Icon name={task.icon} size={17} color={TASK_TONES[task.tone].fg} />
               </View>
             ))}
             {routine.tasks.length > 4 ? (
-              <View style={CHIP}>
-                <T size={11} weight={600} color={C.muted}>
+              <View style={[CHIP(), { backgroundColor: t.stone }]}>
+                <T size={11} weight={600} color={t.muted}>
                   +{routine.tasks.length - 4}
                 </T>
               </View>
             ) : null}
           </Row>
         ) : null}
-      </Grad>
-    </Tap>
+    </Card>
   );
 }
 
-const CARD = { borderRadius: 22, paddingVertical: 18, paddingHorizontal: 20, marginTop: 12 };
+const CARD = { paddingVertical: 18, paddingHorizontal: 20, marginTop: 12 };
 const PLAY = {
   width: 52,
   height: 52,
@@ -196,14 +194,13 @@ const PLAY = {
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
 };
-const CHIP = {
+const CHIP = () => ({
   width: 30,
   height: 30,
-  borderRadius: 10,
-  backgroundColor: C.white,
+  borderRadius: RADIUS.coin,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-};
+});
 
 /* ── timeline ─────────────────────────────────────────────────────── */
 
@@ -220,6 +217,7 @@ export function Timeline({
   showTasks: boolean;
   onOpen: (id: string) => void;
 }) {
+  const t = useT();
   const scheduled = routines
     .slice()
     .sort((a, b) => a.start - b.start);
@@ -240,10 +238,10 @@ export function Timeline({
         return (
           <View key={h}>
             <Row gap={12} style={{ marginTop: 8 }}>
-              <T size={12.5} weight={500} color={C.ghost} style={{ width: 44 }}>
+              <T size={12.5} weight={500} color={t.muted} style={{ width: 44 }}>
                 {String(h).padStart(2, '0')}:00
               </T>
-              <View style={{ flex: 1, borderTopWidth: 1, borderTopColor: C.hairline }} />
+              <View style={{ flex: 1, borderTopWidth: 1, borderTopColor: t.hairline }} />
             </Row>
 
             {here.map((r) => {
@@ -252,37 +250,41 @@ export function Timeline({
                 <Row gap={12} center={false} key={r.id} style={{ marginTop: 8 }}>
                   <View style={{ width: 44 }} />
                   <Tap onPress={() => onOpen(r.id)} style={{ flex: 1 }}>
-                    <Grad colors={G.well} style={BLOCK_HEAD}>
-                      <T size={13.5} weight={700} style={{ flex: 1 }}>
+                    <Grad
+                      colors={G.accentTint}
+                      diag
+                      style={[BLOCK_HEAD, { borderColor: t.accentTintBorder, borderWidth: 1 }]}
+                    >
+                      <T size={13.5} weight={700} color={t.accentText} style={{ flex: 1 }}>
                         {r.name}
                       </T>
                       {done ? (
-                        <View style={TICK}>
-                          <Icon name="check" size={12} color={C.white} />
+                        <View style={TICK()}>
+                          <Icon name="check" size={12} color={C.onInk} />
                         </View>
                       ) : (
-                        <T size={11.5} weight={500} color={C.muted}>
+                        <T size={11.5} weight={500} color={t.accentText}>
                           {totalMinutes(r.tasks)}m
                         </T>
                       )}
                     </Grad>
                     {showTasks
-                      ? r.tasks.slice(0, 3).map((t, i, arr) => (
-                          <Grad
-                            key={t.id}
-                            colors={G.card}
+                      ? r.tasks.slice(0, 3).map((task, i, arr) => (
+                          <View
+                            key={task.id}
                             style={[
                               BLOCK_ROW,
+                              rowSkin(),
                               i === arr.length - 1 && {
                                 borderBottomLeftRadius: 10,
                                 borderBottomRightRadius: 10,
                               },
                             ]}
                           >
-                            <T size={13} weight={600} color={C.textSoft}>
-                              {t.title}
+                            <T size={13} weight={600} color={t.textMid}>
+                              {task.title}
                             </T>
-                          </Grad>
+                          </View>
                         ))
                       : null}
                   </Tap>
@@ -294,12 +296,12 @@ export function Timeline({
               <Row gap={12} style={{ marginTop: 8 }}>
                 <View style={{ width: 44, alignItems: 'flex-end' }}>
                   <Grad colors={G.inkDeep} diag style={NOW_CHIP}>
-                    <T size={10.5} weight={700} color={C.white}>
+                    <T size={10.5} weight={700} color={C.onInk}>
                       {fmtClock(nowMinutes, true)}
                     </T>
                   </Grad>
                 </View>
-                <View style={{ flex: 1, borderTopWidth: 2, borderTopColor: C.ink }} />
+                <View style={{ flex: 1, borderTopWidth: 2, borderTopColor: t.ink }} />
               </Row>
             ) : null}
           </View>
@@ -323,19 +325,19 @@ const BLOCK_HEAD = {
 
 const BLOCK_ROW = {
   marginTop: 3,
-  borderRadius: 4,
+  borderRadius: 6,
   paddingVertical: 9,
   paddingHorizontal: 12,
 };
 
-const TICK = {
+const TICK = () => ({
   width: 19,
   height: 19,
   borderRadius: 10,
   backgroundColor: C.good,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-};
+});
 
 const NOW_CHIP = { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 5 };
 
@@ -360,17 +362,17 @@ export function FabStack({
     <View style={{ position: 'absolute', right: 20, bottom, gap: 14, alignItems: 'center' }}>
       {targetMinutes !== undefined ? (
         <Tap onPress={onTimer}>
-          <Grad colors={['#4A423B', '#2B2521']} diag style={[FAB, { gap: 1 }]}>
-            <Icon name="alarm" size={19} color={C.white} />
-            <T size={9} weight={700} color={C.white}>
+          <Grad colors={G.inkDeep} diag style={[FAB(), { gap: 1 }]}>
+            <Icon name="alarm" size={19} color={C.onInk} />
+            <T size={9} weight={700} color={C.onInk}>
               {untilClock(targetMinutes, now)}
             </T>
           </Grad>
         </Tap>
       ) : null}
       <Tap onPress={onAdd}>
-        <Grad colors={G.accent} diag style={[FAB, ACCENT_SHADOW]}>
-          <Icon name="plus" size={26} color={C.ink} />
+        <Grad colors={G.accent} diag style={FAB()}>
+          <Icon name="plus" size={26} color={C.accentOn} />
         </Grad>
       </Tap>
     </View>
@@ -387,20 +389,13 @@ function untilClock(targetMinutes: number, now: Date) {
   return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
-const FAB = {
+const FAB = () => ({
   width: 62,
   height: 62,
   borderRadius: 31,
   alignItems: 'center' as const,
   justifyContent: 'center' as const,
-  shadowColor: C.ink,
-  shadowOpacity: 0.26,
-  shadowRadius: 20,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 8,
-};
-
-const ACCENT_SHADOW = {
-  shadowColor: C.accent,
-  shadowOpacity: 0.38,
-};
+  // Accent glow shadows stay warm-neutral: they read correctly under any
+  // preset, so the FAB's drop never needs recolouring.
+  boxShadow: SHADOW.fab,
+});

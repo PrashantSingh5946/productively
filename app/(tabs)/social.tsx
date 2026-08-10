@@ -2,37 +2,40 @@
 import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Row, T, Tap } from '../../src/ui';
+import { Grad, Overline, Row, T, Tap, rowSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
-import { C, G } from '../../src/theme';
-import { FEED, FRIENDS, STORY } from '../../src/data';
+import { C, DOCK_CLEARANCE, G } from '../../src/theme';
+import { FEED, FRIENDS, STORY, stepColor } from '../../src/data';
 import { useStore } from '../../src/store';
 
+import { useT } from '../../src/theming';
 export default function Social() {
+  useT();
   const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<'social' | 'friends'>('social');
 
   return (
-    <View style={{ flex: 1, backgroundColor: C.white, paddingTop: insets.top }}>
+    <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 28 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: DOCK_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
-        <Row gap={6} style={{ paddingTop: 10 }}>
+        <Overline style={{ paddingTop: 14, paddingLeft: 2 }}>Your circle</Overline>
+        <Row gap={6} style={{ paddingTop: 4 }}>
           {(['social', 'friends'] as const).map((k) => {
             const on = tab === k;
             const label = k === 'social' ? 'Social' : 'Friends';
             return (
               <Tap key={k} onPress={() => setTab(k)}>
                 {on ? (
-                  <Grad colors={G.card} style={BIG_TAB}>
+                  <View style={[BIG_TAB, rowSkin()]}>
                     <T d size={21} weight={800}>
                       {label}
                     </T>
-                  </Grad>
+                  </View>
                 ) : (
                   <View style={BIG_TAB}>
-                    <T d size={21} weight={800} color={C.ghost}>
+                    <T d size={21} weight={800} color={C.faint}>
                       {label}
                     </T>
                   </View>
@@ -58,8 +61,8 @@ function Feed() {
 
   return (
     <>
-      <View style={STORY_CARD}>
-        <Grad colors={['#F6F2ED', '#ECE6DF']} style={STORY_IMG}>
+      <View style={STORY_CARD()}>
+        <Grad colors={G.stone} style={STORY_IMG}>
           <Icon name="img" size={30} color={C.faint} />
           <T size={11.5} weight={500} color={C.faint}>
             Story photo
@@ -76,13 +79,13 @@ function Feed() {
       </View>
 
       <Row gap={10} style={{ marginTop: 16, justifyContent: 'flex-end' }}>
-        <Grad colors={G.card} style={SMALL_PILL}>
+        <Grad colors={G.card} style={[SMALL_PILL, rowSkin()]}>
           <Icon name="filter" size={15} color={C.textMid} />
           <T size={13.5} weight={600} color={C.textMid}>
             Filter
           </T>
         </Grad>
-        <Grad colors={G.card} style={SMALL_PILL}>
+        <Grad colors={G.card} style={[SMALL_PILL, rowSkin()]}>
           <Icon name="lock" size={15} color={C.textMid} />
           <T size={13.5} weight={600} color={C.textMid}>
             Visibility
@@ -105,7 +108,7 @@ function Feed() {
                 <T size={16} weight={700}>
                   {post.name}
                 </T>
-                <Icon name="ring" size={16} color={post.tierColor} />
+                <Icon name="ring" size={16} color={stepColor(post.tierStep)} />
                 <View style={{ flex: 1 }} />
                 <T size={13} weight={500} color={C.ghost}>
                   {post.ago}
@@ -141,7 +144,7 @@ function Feed() {
                   })}
                 </Row>
 
-                <Grad colors={G.card} style={SUMMARY}>
+                <Grad colors={G.card} style={[SUMMARY, rowSkin()]}>
                   <View style={{ flex: 1 }}>
                     <Row gap={7}>
                       <Icon name="clock" size={15} color={C.muted} />
@@ -169,7 +172,7 @@ function Feed() {
                       setCopied((c) => [...c, post.id]);
                     }}
                   >
-                    <Row gap={7} style={ADD_BTN}>
+                    <Row gap={7} style={ADD_BTN()}>
                       <Icon name={isCopied ? 'check' : 'plus'} size={14} color={C.ink} />
                       <T size={13.5} weight={700}>
                         {isCopied ? 'Added' : 'Add'}
@@ -219,9 +222,9 @@ function Friends() {
           {FRIENDS.length} / 10
         </T>
         <View style={{ flex: 1 }} />
-        <Grad colors={G.card} style={BELL}>
+        <Grad colors={G.card} style={[BELL, rowSkin()]}>
           <Icon name="bell" size={19} color={C.textMid} />
-          <View style={BADGE_DOT} />
+          <View style={BADGE_DOT()} />
         </Grad>
       </Row>
 
@@ -246,7 +249,9 @@ function Friends() {
                   <T size={16} weight={700}>
                     {f.name}
                   </T>
-                  {f.tierColor ? <Icon name="ring" size={15} color={f.tierColor} /> : null}
+                  {f.tierStep !== undefined ? (
+                    <Icon name="ring" size={15} color={stepColor(f.tierStep)} />
+                  ) : null}
                   {f.bookmarked ? <Icon name="bookmark" size={13} color={C.ghost} /> : null}
                 </Row>
                 <T
@@ -261,11 +266,11 @@ function Friends() {
 
               {f.running ? (
                 <Grad colors={G.accent} diag style={PLAY_SM}>
-                  <Icon name="play" size={14} color={C.ink} />
+                  <Icon name="play" size={14} color={C.accentOn} />
                 </Grad>
               ) : f.quiet ? (
                 <Tap onPress={() => nudge(f.id)}>
-                  <View style={NUDGE_BTN}>
+                  <View style={NUDGE_BTN()}>
                     <T size={12.5} weight={600} color={nudged ? C.good : C.textMid}>
                       {nudged ? 'Nudged' : 'Nudge'}
                     </T>
@@ -277,7 +282,7 @@ function Friends() {
         })}
       </View>
 
-      <Row gap={12} style={ADD_FRIENDS}>
+      <Row gap={12} style={ADD_FRIENDS()}>
         <Grad colors={G.chip} style={PLUS_CIRCLE}>
           <Icon name="plus" size={17} color={C.textSoft} />
         </Grad>
@@ -304,12 +309,12 @@ function Friends() {
 
 const BIG_TAB = { paddingVertical: 11, paddingHorizontal: 22, borderRadius: 999 };
 
-const STORY_CARD = {
+const STORY_CARD = () => ({
   marginTop: 16,
   borderRadius: 20,
   overflow: 'hidden' as const,
-  backgroundColor: '#FFF1E8',
-};
+  backgroundColor: C.accentWash,
+});
 
 const STORY_IMG = {
   height: 132,
@@ -355,13 +360,13 @@ const SUMMARY = {
   gap: 14,
 };
 
-const ADD_BTN = {
+const ADD_BTN = () => ({
   paddingVertical: 10,
   paddingHorizontal: 18,
   borderRadius: 999,
   borderWidth: 1.5,
   borderColor: C.ring,
-};
+});
 
 const BELL = {
   width: 40,
@@ -371,7 +376,7 @@ const BELL = {
   justifyContent: 'center' as const,
 };
 
-const BADGE_DOT = {
+const BADGE_DOT = () => ({
   position: 'absolute' as const,
   top: 8,
   right: 9,
@@ -380,8 +385,8 @@ const BADGE_DOT = {
   borderRadius: 4,
   backgroundColor: C.danger,
   borderWidth: 2,
-  borderColor: '#F6F2ED',
-};
+  borderColor: C.hairline,
+});
 
 const FRIEND = {
   flexDirection: 'row' as const,
@@ -400,14 +405,14 @@ const PLAY_SM = {
   justifyContent: 'center' as const,
 };
 
-const NUDGE_BTN = {
+const NUDGE_BTN = () => ({
   paddingVertical: 8,
   paddingHorizontal: 14,
   borderRadius: 999,
-  backgroundColor: C.white,
-};
+  backgroundColor: C.card,
+});
 
-const ADD_FRIENDS = {
+const ADD_FRIENDS = () => ({
   marginTop: 14,
   padding: 20,
   borderRadius: 20,
@@ -415,7 +420,7 @@ const ADD_FRIENDS = {
   borderColor: C.ring,
   borderStyle: 'dashed' as const,
   justifyContent: 'center' as const,
-};
+});
 
 const PLUS_CIRCLE = {
   width: 32,
