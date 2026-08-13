@@ -66,14 +66,31 @@ into Today, and the things that used to sit above it are gone.
   resolved mode while it is on.
 - **Rate us, Contact us, FAQs, Labs and Share** moved from Profile to Account &
   data, as the board's own footnote says.
-- **Reminders no longer promise a precision they cannot deliver.** The settings
-  row read "A notification 5 minutes before each routine". These are
-  notifications, not exact alarms — the app does not hold
-  `SCHEDULE_EXACT_ALARM`, which Expo's own SDK 57 docs name as the requirement
-  for exact-time scheduling on Android 12+, so the OS may batch them and Doze
-  can hold one back. It says "around" now. Adding the permission is a Google
-  Play policy decision (the exact-alarm policy restricts it to apps whose core
-  function is an alarm clock or calendar) and has deliberately not been taken.
+- **Reminders are exact alarms now.** The app declares `SCHEDULE_EXACT_ALARM`.
+  No scheduling code changed and none needed to: expo-notifications already
+  branches on `canScheduleExactAlarms()` in its `ExpoSchedulingDelegate` and
+  picks `setExactAndAllowWhileIdle` when the grant is there, degrading to
+  `setAndAllowWhileIdle` when it is not — so every reminder had been quietly
+  taking the batchable, Doze-delayable path.
+
+  Declared in `app.json` only, which is the source of truth — `/android` is
+  gitignored and generated. Worth knowing for anyone who hits this: adding the
+  permission and running `expo run:android` does **nothing**, because run
+  reuses an existing `android/` and never re-runs prebuild over it. `dumpsys`
+  showed no such permission after the first attempt; `npx expo prebuild -p
+  android` emits it and then the build picks it up.
+
+  Note this is a Google Play policy surface: the exact-alarm policy restricts
+  the permission to apps whose core function is an alarm clock or calendar, so
+  the Play listing needs to justify it at submission.
+
+- **Settings ▸ Routine ▸ Exact timing** opens this app's "Alarms & reminders"
+  page, via `expo-intent-launcher` with a `package:` data URI — RN's
+  `Linking.sendIntent` has nowhere to put one and would land on the system-wide
+  list. Android revokes this grant at will and denies it by default from
+  Android 14, and no module in the app exposes `canScheduleExactAlarms()` to
+  JS, so the row is deliberately written as an offer rather than a status: a
+  state we cannot read must not be printed as a fact.
 
 ### Fixed
 

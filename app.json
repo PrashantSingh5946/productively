@@ -20,7 +20,8 @@
         "ACCESS_NETWORK_STATE",
         "VIBRATE",
         "POST_NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED"
+        "RECEIVE_BOOT_COMPLETED",
+        "SCHEDULE_EXACT_ALARM"
       ],
       "blockedPermissions": [
         "android.permission.SYSTEM_ALERT_WINDOW",

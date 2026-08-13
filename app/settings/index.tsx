@@ -9,7 +9,7 @@ import { ThemeSheet } from '../../src/components/ThemeSheet';
 import { Icon } from '../../src/icons';
 import { C, accentLabel, accentSwatch } from '../../src/theme';
 import { APP_ICONS, fmtClock } from '../../src/data';
-import { requestAlarms } from '../../src/alarms';
+import { exactAlarmsConfigurable, openExactAlarmSettings, requestAlarms } from '../../src/alarms';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
@@ -131,17 +131,17 @@ export default function Settings() {
               </T>
               <T size={13} lh={18} color={C.muted} style={{ marginTop: 3 }}>
                 {/*
-                  "5 minutes before" was a promise the delivery path does not
-                  keep. These are notifications, not exact alarms — the app
-                  does not hold SCHEDULE_EXACT_ALARM, so Android is free to
-                  batch them and Doze can hold one back on an idle phone.
-                  "Around" is the honest word; a reminder that quietly lands
-                  late is worse than one that said it might.
+                  Precise again, and now earned: the app declares
+                  SCHEDULE_EXACT_ALARM, so expo-notifications schedules with
+                  setExactAndAllowWhileIdle and the reminder survives Doze.
+                  The one remaining caveat — that Android can revoke the grant
+                  — lives on the Exact timing row below, next to the control
+                  that fixes it, rather than hedging this line for everyone.
                 */}
                 {s.alarms
                   ? s.alarmLead === 0
-                    ? 'A notification around each routine’s start time'
-                    : `A notification around ${s.alarmLead} minutes before each routine`
+                    ? 'A notification as each routine starts'
+                    : `A notification ${s.alarmLead} minutes before each routine`
                   : blocked
                     ? 'Android is blocking notifications for Productively'
                     : 'Off — nothing will interrupt you'}
@@ -154,6 +154,20 @@ export default function Settings() {
               label="Remind me"
               value={leadLabel(s.alarmLead)}
               onPress={() => setField('lead')}
+            />
+          ) : null}
+          {/*
+            Written as an offer, not a status. Android can revoke the
+            exact-alarm grant — and denies it by default from 14 — but nothing
+            in this app can read `canScheduleExactAlarms()` from JS, so a row
+            claiming "On" or "Off" here would be a guess printed as a fact.
+            It says what to do and gets out of the way.
+          */}
+          {s.alarms && exactAlarmsConfigurable() ? (
+            <RowItem
+              label="Exact timing"
+              external
+              onPress={openExactAlarmSettings}
             />
           ) : null}
           <RowItem label="Home screen" chevron onPress={() => router.push('/settings/home-screen')} />

@@ -21,8 +21,10 @@
  * refuses notifications is not an error state, it is a phone.
  */
 import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import * as IntentLauncher from 'expo-intent-launcher';
+import Constants from 'expo-constants';
 import { Routine, fmtClock } from './data';
 
 /** Android groups notifications by channel; ours is the one the user can mute. */
@@ -117,6 +119,53 @@ export function useReminderTaps(onOpen: (routineId: string) => void, ready: bool
     handled.current = req.identifier;
     cb.current(data.routineId);
   }, [response, ready]);
+}
+
+/* ── exact timing ─────────────────────────────────────────────────── */
+
+/**
+ * Whether the OS can still be hiding an exact-alarm veto from us.
+ *
+ * `SCHEDULE_EXACT_ALARM` is declared in app.json, and expo-notifications reads
+ * the resulting `canScheduleExactAlarms()` itself — see its
+ * `ExpoSchedulingDelegate`, which picks `setExactAndAllowWhileIdle` when the
+ * grant is there and quietly degrades to `setAndAllowWhileIdle` when it is
+ * not. So nothing in this module has to ask for exactness; it only has to give
+ * the user a way to restore the grant.
+ *
+ * The grant is revocable from Android 12 (API 31) and *denied by default* from
+ * Android 14, and neither expo-notifications nor any module in this app
+ * exposes `canScheduleExactAlarms()` to JS — so the true state is unreadable
+ * from here. The row this gates is therefore written as an offer, never as a
+ * status: claiming "on" or "off" would be a coin flip printed as a fact.
+ */
+export const exactAlarmsConfigurable = () => Platform.OS === 'android' && Platform.Version >= 31;
+
+/**
+ * Open this app's "Alarms & reminders" page.
+ *
+ * The `package:` data is what lands on our own row rather than the system-wide
+ * list — which is why this needs expo-intent-launcher and not RN's
+ * `Linking.sendIntent`, whose signature has nowhere to put a data URI.
+ */
+export async function openExactAlarmSettings(): Promise<boolean> {
+  if (Platform.OS !== 'android') return false;
+  try {
+    await IntentLauncher.startActivityAsync(
+      'android.settings.REQUEST_SCHEDULE_EXACT_ALARM',
+      { data: `package:${Constants.expoConfig?.android?.package ?? ''}` }
+    );
+    return true;
+  } catch {
+    // Some OEM builds ship no such activity. The generic app-settings page is
+    // still somewhere the user can get to the toggle from.
+    try {
+      await Linking.openSettings();
+      return true;
+    } catch {
+      return false;
+    }
+  }
 }
 
 /**
