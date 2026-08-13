@@ -181,9 +181,10 @@ export default function BackupScreen() {
           ) : null}
         </Card>
 
-        {/* ── account ──────────────────────────────────────────── */}
+        {/* ── account ──────────────────────────────────────────────
+            The only sign-in left in the app, and it is Google's, not ours. */}
         {off ? null : (
-          <Group title="Account" style={{ marginTop: 14 }}>
+          <Group title="Google account" style={{ marginTop: 14 }}>
             {connected ? (
               <Row gap={14} style={{ paddingVertical: 15 }}>
                 <Icon name="mail" size={20} color={C.textMid} />

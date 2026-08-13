@@ -134,8 +134,13 @@ export default function EditProfile() {
                 style={INPUT_BLOCK()}
               />
             ) : (
-              <T size={15} lh={23} color={C.textMid} style={{ marginTop: 14 }}>
-                {p.intro}
+              <T
+                size={15}
+                lh={23}
+                color={p.intro ? C.textMid : C.faint}
+                style={{ marginTop: 14 }}
+              >
+                {p.intro || 'Nothing here yet.'}
               </T>
             )}
           </Grad>

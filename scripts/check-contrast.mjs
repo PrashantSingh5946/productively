@@ -11,9 +11,12 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const out = mkdtempSync(join(tmpdir(), 'productively-tokens-'));
+// Run the installed compiler directly rather than through `npx`: on Windows the
+// launcher is `npx.cmd`, which execFileSync will not resolve, and the whole
+// check suite fell over before it compiled anything.
 execFileSync(
-  'npx',
-  ['tsc', 'src/tokens.ts', '--ignoreConfig', '--outDir', out, '--module', 'es2020', '--target', 'es2020', '--skipLibCheck'],
+  process.execPath,
+  ['node_modules/typescript/bin/tsc', 'src/tokens.ts', '--ignoreConfig', '--outDir', out, '--module', 'es2020', '--target', 'es2020', '--skipLibCheck'],
   { stdio: 'inherit' }
 );
 

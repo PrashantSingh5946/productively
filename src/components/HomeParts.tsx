@@ -91,6 +91,7 @@ export function RoutineCard({
   next,
   countdown,
   session,
+  rate,
   showIcons,
   showStart,
   showDays,
@@ -103,6 +104,8 @@ export function RoutineCard({
   next?: boolean;
   countdown?: string;
   session?: Session;
+  /** Recent completion, 0–1. Null until the routine has been scheduled and run. */
+  rate?: number | null;
   showIcons?: boolean;
   showStart?: boolean;
   showDays?: boolean;
@@ -142,9 +145,9 @@ export function RoutineCard({
             <T size={13} weight={700}>
               {countdown}
             </T>
-          ) : showProgress !== false ? (
+          ) : showProgress !== false && rate !== null && rate !== undefined ? (
             <T size={13} weight={700} color={C.good}>
-              {Math.round(routine.rate * 100)}%
+              {Math.round(rate * 100)}%
             </T>
           ) : null}
         </Row>

@@ -19,6 +19,7 @@
     "expo-linear-gradient": "~57.0.1",
     "expo-linking": "~57.0.5",
     "expo-network": "~57.0.1",
+    "expo-notifications": "~57.0.9",
     "expo-router": "~57.0.11",
     "expo-secure-store": "~57.0.1",
     "expo-sharing": "~57.0.10",
@@ -45,10 +46,12 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit",
+    "icons": "node scripts/make-icons.mjs",
     "check:contrast": "node scripts/check-contrast.mjs",
     "check:tokens": "node scripts/check-tokens.mjs",
     "check:backup": "node scripts/check-backup.mjs",
-    "check": "npm run typecheck && npm run check:contrast && npm run check:tokens && npm run check:backup"
+    "check:analytics": "node scripts/check-analytics.mjs",
+    "check": "npm run typecheck && npm run check:contrast && npm run check:tokens && npm run check:backup && npm run check:analytics"
   },
   "private": true
 }

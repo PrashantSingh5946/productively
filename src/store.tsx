@@ -1,6 +1,10 @@
 /**
- * Single app store — React context over AsyncStorage. Seeded on first launch
- * with the sample account the board describes, then mutated by the app.
+ * Single app store — React context over AsyncStorage.
+ *
+ * On first launch it seeds the sample account from ./demo, but only when the
+ * build asks for it; otherwise it starts empty. Nothing in here holds a
+ * pre-computed streak or completion rate any more — those are derived from
+ * `sessions` in ./analytics, which is the only place history is interpreted.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setHapticsEnabled } from './haptics';
@@ -21,17 +25,17 @@ import React, {
   useState,
 } from 'react';
 import {
-  CHECKLISTS,
   ChecklistGroup,
-  NOTES,
+  FIRST_ROUTINE_TASKS,
   NoteEntry,
-  ROUTINES,
   Routine,
   Session,
   Task,
   Template,
   totalMinutes,
 } from './data';
+import { dayKey, startOfDay, streakFor as deriveStreak } from './analytics';
+import { DEMO_SEED, buildDemoAccount } from './demo';
 
 const KEY = STATE_KEY;
 
@@ -45,6 +49,14 @@ export type Settings = {
   weekStart: 'Sun' | 'Mon';
   endDayAt: number;
   haptics: boolean;
+  /**
+   * Whether to post a reminder before each routine. Off until the user says
+   * yes *and* Android grants the permission — see src/alarms.ts, which treats
+   * this as the user's intent and the OS grant as the separate veto.
+   */
+  alarms: boolean;
+  /** How many minutes before the start time the reminder fires. */
+  alarmLead: number;
   statusBarTimer: boolean;
   homeView: 'list' | 'timeline';
   homeList: { startTime: boolean; repeatDays: boolean; progress: boolean; taskIcons: boolean };
@@ -83,60 +95,74 @@ export type State = {
   notes: NoteEntry[];
   sessions: Session[];
   savedTemplates: string[];
-  nudged: string[];
   settings: Settings;
 };
 
-const initial: State = {
-  onboarded: false,
-  profile: {
-    name: 'Prashant',
-    intro: 'Building slowly. 13 days into the morning routine.',
-    gender: 'Prefer not to say',
-    age: '30–34',
-    intents: ['doing', 'schedule', 'track', 'energy'],
-    struggles: [],
-    wake: 8 * 60,
-    sleep: 22 * 60,
-  },
-  routines: ROUTINES,
-  checklists: CHECKLISTS,
-  notes: NOTES,
-  sessions: [],
-  savedTemplates: [],
-  nudged: [],
-  settings: {
-    language: 'English',
-    theme: 'System',
-    accent: 'ember',
-    appIcon: 'default',
-    timeFormat12: true,
-    weekStart: 'Sun',
-    endDayAt: 3 * 60,
-    haptics: true,
-    statusBarTimer: false,
-    homeView: 'list',
-    homeList: { startTime: true, repeatDays: true, progress: true, taskIcons: false },
-    homeTimeline: { showTasks: true },
-    timer: {
-      display: 'clock',
-      remainingTime: true,
-      taskDuration: false,
-      nextTask: true,
-      keepScreenOn: true,
-      landscape: false,
-      sticky: true,
-      summary: true,
-      moodReview: true,
+/**
+ * A fresh account. The demo history is generated at call time rather than held
+ * in a module constant, because "twelve days ending yesterday" has to be
+ * relative to the day the app is actually opened.
+ */
+const freshState = (): State => {
+  const demo = buildDemoAccount();
+  return {
+    onboarded: false,
+    profile: {
+      name: 'Prashant',
+      // The board's persona line, and it states a figure: "13 days into the
+      // morning routine". True of the sample account, a fabrication on a real
+      // install — a fresh account claimed thirteen days it had never run. It
+      // belongs to the demo, so it ships with the demo.
+      intro: DEMO_SEED ? 'Building slowly. 13 days into the morning routine.' : '',
+      gender: 'Prefer not to say',
+      age: '30–34',
+      intents: ['doing', 'schedule', 'track', 'energy'],
+      struggles: [],
+      wake: 8 * 60,
+      sleep: 22 * 60,
     },
-    backup: DEFAULT_BACKUP_SETTINGS,
-  },
+    routines: demo.routines,
+    checklists: demo.checklists,
+    notes: demo.notes,
+    sessions: demo.sessions,
+    savedTemplates: [],
+    settings: defaultSettings(),
+  };
 };
+
+const defaultSettings = (): Settings => ({
+  language: 'English',
+  theme: 'System',
+  accent: 'ember',
+  appIcon: 'default',
+  timeFormat12: true,
+  weekStart: 'Sun',
+  endDayAt: 3 * 60,
+  haptics: true,
+  alarms: false,
+  alarmLead: 5,
+  statusBarTimer: false,
+  homeView: 'list',
+  homeList: { startTime: true, repeatDays: true, progress: true, taskIcons: false },
+  homeTimeline: { showTasks: true },
+  timer: {
+    display: 'clock',
+    remainingTime: true,
+    taskDuration: false,
+    nextTask: true,
+    keepScreenOn: true,
+    landscape: false,
+    sticky: true,
+    summary: true,
+    moodReview: true,
+  },
+  backup: DEFAULT_BACKUP_SETTINGS,
+});
 
 type Ctx = {
   state: State;
   ready: boolean;
-  /** Base streak (12) plus today's morning run, matching the board's 13. */
+  /** Consecutive scheduled days ending today, derived from `sessions`. */
   streakFor: (routineId: string) => number;
   routine: (id: string) => Routine | undefined;
   completedToday: (routineId: string) => Session | undefined;
@@ -146,22 +172,54 @@ type Ctx = {
   finishRun: (s: Omit<Session, 'id' | 'day'>) => void;
   toggleChecklistItem: (groupId: string, itemId: string) => void;
   addChecklistItem: (groupId: string, title: string) => void;
+  removeChecklistItem: (groupId: string, itemId: string) => void;
+  renameChecklistItem: (groupId: string, itemId: string, title: string) => void;
+  /** Create an empty list and hand back its id, so the caller can focus it. */
+  addChecklist: (title: string) => string;
+  renameChecklist: (groupId: string, title: string) => void;
+  removeChecklist: (groupId: string) => void;
+  /** Untick everything in one list — the point of a reusable packing list. */
+  resetChecklist: (groupId: string) => void;
+  /** A blank routine at the given time. Returns its id. */
+  addRoutine: (name: string, start: number, days: number[]) => string;
+  updateRoutine: (routineId: string, patch: Partial<Omit<Routine, 'id' | 'tasks'>>) => void;
+  removeRoutine: (routineId: string) => void;
   addRoutineFromTemplate: (tpl: Template) => string;
   addTasksToRoutine: (routineId: string, tasks: Task[]) => void;
+  updateTask: (routineId: string, taskId: string, patch: Partial<Omit<Task, 'id'>>) => void;
   removeTask: (routineId: string, taskId: string) => void;
   moveTask: (routineId: string, taskId: string, dir: -1 | 1) => void;
   addNote: (routineId: string, body: string) => void;
   toggleSaved: (templateId: string) => void;
-  nudge: (friendId: string) => void;
+  /**
+   * Close onboarding. Pass the reviewed task list if the user was shown one.
+   * Lives here rather than in a screen because more than one screen can be the
+   * last step, and whichever it is has to leave the user with a routine.
+   */
+  finishOnboarding: (reviewed?: Task[]) => void;
   reset: () => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
 
-const today = () => new Date().toISOString().slice(0, 10);
+/**
+ * The device's own calendar day. This was `toISOString().slice(0, 10)` — UTC —
+ * which filed a 9:30pm Wind down in the Americas under tomorrow, so the run
+ * that extended a streak was the run that broke it.
+ */
+const today = () => dayKey(startOfDay(new Date()));
+
+/**
+ * Ids only have to be unique within one account, and everything the user
+ * creates is created one tap at a time — but two items added inside the same
+ * millisecond used to collide, which React renders as a duplicate-key warning
+ * and a row that ticks its twin. The counter removes that.
+ */
+let seq = 0;
+const uid = (prefix: string) => `${prefix}${Date.now().toString(36)}${(seq++).toString(36)}`;
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<State>(initial);
+  const [state, setState] = useState<State>(freshState);
   const [ready, setReady] = useState(false);
   const hydrated = useRef(false);
 
@@ -232,10 +290,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           settings.backup = normalizeBackupSettings(settings.backup);
           return { ...s, ...next, settings, profile: { ...s.profile, ...(next.profile ?? {}) } };
         }),
-      streakFor: (routineId) => {
-        const base = routine(routineId)?.streak ?? 0;
-        return completedToday(routineId) ? base + 1 : base;
-      },
+      streakFor: (routineId) => deriveStreak(routine(routineId), state.sessions),
       finishRun: (s) =>
         set((d) => {
           const day = today();
@@ -255,7 +310,59 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       addChecklistItem: (groupId, title) =>
         set((d) => {
           const g = d.checklists.find((x) => x.id === groupId);
-          g?.items.push({ id: `c${Date.now()}`, title, done: false });
+          g?.items.push({ id: uid('c'), title, done: false });
+        }),
+      removeChecklistItem: (groupId, itemId) =>
+        set((d) => {
+          const g = d.checklists.find((x) => x.id === groupId);
+          if (g) g.items = g.items.filter((i) => i.id !== itemId);
+        }),
+      renameChecklistItem: (groupId, itemId, title) =>
+        set((d) => {
+          const it = d.checklists.find((x) => x.id === groupId)?.items.find((i) => i.id === itemId);
+          if (it) it.title = title;
+        }),
+      addChecklist: (title) => {
+        const id = uid('list-');
+        set((d) => {
+          d.checklists.push({ id, title, items: [] });
+        });
+        return id;
+      },
+      renameChecklist: (groupId, title) =>
+        set((d) => {
+          const g = d.checklists.find((x) => x.id === groupId);
+          if (g) g.title = title;
+        }),
+      removeChecklist: (groupId) =>
+        set((d) => {
+          d.checklists = d.checklists.filter((x) => x.id !== groupId);
+        }),
+      resetChecklist: (groupId) =>
+        set((d) => {
+          d.checklists.find((x) => x.id === groupId)?.items.forEach((i) => {
+            i.done = false;
+          });
+        }),
+      addRoutine: (name, start, days) => {
+        const id = uid('r-');
+        set((d) => {
+          d.routines.push({ id, name, start, days, tasks: [] });
+        });
+        return id;
+      },
+      updateRoutine: (routineId, patch) =>
+        set((d) => {
+          const r = d.routines.find((x) => x.id === routineId);
+          if (r) Object.assign(r, patch);
+        }),
+      removeRoutine: (routineId) =>
+        set((d) => {
+          d.routines = d.routines.filter((r) => r.id !== routineId);
+          // Its history would otherwise sit in the analytics forever, counted
+          // against a routine the user can no longer see or run.
+          d.sessions = d.sessions.filter((s) => s.routineId !== routineId);
+          d.notes = d.notes.filter((n) => n.routineId !== routineId);
         }),
       addRoutineFromTemplate: (tpl) => {
         const id = `${tpl.id}-${Date.now().toString(36)}`;
@@ -266,8 +373,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             start: 7 * 60,
             days: [1, 2, 3, 4, 5],
             tasks: tpl.tasks.map((t, i) => ({ ...t, id: `${id}-${i}` })),
-            streak: 0,
-            rate: 0,
           });
         });
         return id;
@@ -276,9 +381,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         set((d) => {
           const r = d.routines.find((x) => x.id === routineId);
           if (!r) return;
-          tasks.forEach((t, i) =>
-            r.tasks.push({ ...t, id: `${routineId}-add-${Date.now()}-${i}` })
-          );
+          tasks.forEach((t) => r.tasks.push({ ...t, id: uid(`${routineId}-add-`) }));
+        }),
+      updateTask: (routineId, taskId, patch) =>
+        set((d) => {
+          const t = d.routines.find((x) => x.id === routineId)?.tasks.find((x) => x.id === taskId);
+          if (t) Object.assign(t, patch);
         }),
       removeTask: (routineId, taskId) =>
         set((d) => {
@@ -321,11 +429,39 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             ? d.savedTemplates.filter((x) => x !== templateId)
             : [...d.savedTemplates, templateId];
         }),
-      nudge: (friendId) =>
+      /**
+       * Onboarding ends by handing the user a routine, not just a flag.
+       *
+       * The morning routine is whichever one runs earliest, not a fixed id —
+       * the sample account's ids are prefixed and a real one has none of these.
+       * When there is no routine at all (a build with `demoSeed` off) the first
+       * one is created here; without that, onboarding walked people through
+       * "we've prepared your first routine" and left them on an empty Home.
+       *
+       * `reviewed` is the list from 1.11 when that screen was part of the flow.
+       * Omitted, nobody edited anything, so an existing routine keeps its own
+       * tasks and the template is only used to create.
+       */
+      finishOnboarding: (reviewed) =>
         set((d) => {
-          if (!d.nudged.includes(friendId)) d.nudged.push(friendId);
+          d.onboarded = true;
+          const start = d.profile.wake;
+          const morning = d.routines.slice().sort((a, b) => a.start - b.start)[0];
+          if (morning) {
+            morning.start = start;
+            if (reviewed) morning.tasks = reviewed.map((t) => ({ ...t }));
+            return;
+          }
+          const id = `first-${Date.now().toString(36)}`;
+          d.routines.push({
+            id,
+            name: 'Morning routine',
+            start,
+            days: [1, 2, 3, 4, 5],
+            tasks: (reviewed ?? FIRST_ROUTINE_TASKS).map((t, i) => ({ ...t, id: `${id}-${i}` })),
+          });
         }),
-      reset: () => setState(initial),
+      reset: () => setState(freshState()),
     };
   }, [state, ready, set]);
 

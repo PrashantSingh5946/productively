@@ -10,6 +10,7 @@ import { Button, Grad, Row, Segmented, Spacer, T, Toggle, TopBar, cardSkin } fro
 import { Icon } from '../../src/icons';
 import { C, G } from '../../src/theme';
 import { daysLabel, fmtClock } from '../../src/data';
+import { rateFor } from '../../src/analytics';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
@@ -137,6 +138,18 @@ function ListPreview({
 }) {
   const { state } = useStore();
   const r = state.routines[0];
+  const rate = r ? rateFor(r, state.sessions) : null;
+
+  // Nothing to preview until there is a routine to draw.
+  if (!r) {
+    return (
+      <View style={{ borderRadius: 16, backgroundColor: C.card, padding: 20 }}>
+        <T size={13.5} lh={20} color={C.muted}>
+          Add a routine and this preview will show it.
+        </T>
+      </View>
+    );
+  }
 
   return (
     <View style={{ borderRadius: 16, backgroundColor: C.card, padding: 16, paddingHorizontal: 18 }}>
@@ -158,9 +171,9 @@ function ListPreview({
           </Row>
         ) : null}
         <View style={{ flex: 1 }} />
-        {cfg.progress ? (
+        {cfg.progress && rate !== null ? (
           <T size={12.5} weight={700} color={C.good}>
-            {Math.round(r.rate * 100)}%
+            {Math.round(rate * 100)}%
           </T>
         ) : null}
       </Row>

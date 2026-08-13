@@ -1,4 +1,12 @@
-/** 8.2 Account & data. */
+/**
+ * 8.2 Your data.
+ *
+ * Drawn on the board as "Account & data", with an email row, a "Sign out" and a
+ * "Delete account". There is no account to sign out of — the email it printed
+ * was the *Google* one used to reach Drive, and "Sign out" silently called
+ * `reset()`, which wipes the phone. What is here is what actually exists: the
+ * archive, where it goes, and how to get it out or destroy it.
+ */
 import React, { useMemo } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
@@ -10,6 +18,7 @@ import { useStore } from '../../src/store';
 import { useBackup } from '../../src/backup/context';
 import { summarize } from '../../src/backup/archive';
 import { agoLabel, sizeLabel } from '../../src/backup/format';
+import { APP_LABEL } from '../../src/release';
 
 import { useT } from '../../src/theming';
 export default function Account() {
@@ -28,7 +37,7 @@ export default function Account() {
 
   const confirmDelete = () =>
     Alert.alert(
-      'Delete account',
+      'Delete everything',
       'This wipes every routine, note and session on this device. It cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -52,7 +61,7 @@ export default function Account() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 20, flexGrow: 1 }}
       >
         <T d size={30} weight={800} lh={34} style={{ marginTop: 16 }}>
-          Account & data
+          Your data
         </T>
 
         <Grad colors={G.inkDeep} diag style={HERO}>
@@ -87,19 +96,7 @@ export default function Account() {
           </Row>
         </Grad>
 
-        <Group title="Account" style={{ marginTop: 14 }}>
-          <Row gap={14} style={{ paddingVertical: 15 }}>
-            <Icon name="mail" size={20} color={C.text} />
-            <View style={{ flex: 1 }}>
-              <T size={16} weight={700}>
-                Email
-              </T>
-              <T size={13.5} color={C.muted} style={{ marginTop: 5 }}>
-                {backup.account?.email ?? 'Not signed in'}
-              </T>
-            </View>
-          </Row>
-
+        <Group title="This device" style={{ marginTop: 14 }}>
           <RowItem
             icon="cloud"
             label="Back up & sync"
@@ -124,26 +121,16 @@ export default function Account() {
         </Group>
 
         <View style={{ marginTop: 18, gap: 14, paddingHorizontal: 4 }}>
-          <Tap
-            onPress={() => {
-              reset();
-              router.replace('/onboarding/welcome');
-            }}
-          >
-            <T size={15} weight={600} color={C.muted}>
-              Sign out
-            </T>
-          </Tap>
           <Tap onPress={confirmDelete}>
             <T size={15} weight={600} color={C.over}>
-              Delete account
+              Delete everything
             </T>
           </Tap>
         </View>
 
         <Spacer />
         <T size={12.5} weight={500} center color={C.wisp} style={{ paddingBottom: 16 }}>
-          Productively 1.4.2
+          {APP_LABEL}
         </T>
       </ScrollView>
     </View>

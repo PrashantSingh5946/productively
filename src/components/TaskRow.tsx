@@ -34,6 +34,7 @@ export function TaskRow({
   trailing,
   selected,
   onPress,
+  onEdit,
   onMove,
   onRemove,
   compact,
@@ -44,11 +45,13 @@ export function TaskRow({
   trailing?: React.ReactNode;
   selected?: boolean;
   onPress?: () => void;
+  /** Opens the composer on this task. Absent where rows are read-only. */
+  onEdit?: () => void;
   onMove?: (dir: -1 | 1) => void;
   onRemove?: () => void;
   compact?: boolean;
 }) {
-  const editing = selected && (onMove || onRemove);
+  const editing = selected && (onMove || onRemove || onEdit);
 
   return (
     <Tap onPress={onPress}>
@@ -76,6 +79,13 @@ export function TaskRow({
 
           {editing ? (
             <Row gap={10}>
+              {onEdit ? (
+                <Tap onPress={onEdit} hitSlop={8}>
+                  <View style={STEP()}>
+                    <Icon name="pencil" size={15} color={C.textMid} />
+                  </View>
+                </Tap>
+              ) : null}
               <Tap onPress={() => onMove?.(-1)} hitSlop={8}>
                 <View style={[STEP(), { transform: [{ rotate: '180deg' }] }]}>
                   <Icon name="chevD" size={16} color={C.textMid} />

@@ -1,4 +1,4 @@
-/** 7.1 Profile — the hub for account, support and everything else. */
+/** 7.1 Profile — the hub for your data, support and everything else. */
 import React from 'react';
 import { Linking, ScrollView, Share, View } from 'react-native';
 import { router } from 'expo-router';
@@ -6,13 +6,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Grad, Group, IconButton, Overline, Row, RowItem, T, Tap, cardSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { C, DOCK_CLEARANCE, G, IDENTITY } from '../../src/theme';
+import { bestStreak } from '../../src/analytics';
 import { useStore } from '../../src/store';
+import { APP_LABEL } from '../../src/release';
 
 import { useT } from '../../src/theming';
 export default function Profile() {
   useT();
   const insets = useSafeAreaInsets();
-  const { state, streakFor } = useStore();
+  const { state } = useStore();
+  const leader = bestStreak(state.routines, state.sessions);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
@@ -22,7 +25,7 @@ export default function Profile() {
       >
         <Row style={{ justifyContent: 'space-between', paddingTop: 12 }}>
           <View>
-            <Overline>Account</Overline>
+            <Overline>You</Overline>
             <T d size={30} weight={800} style={{ marginTop: 4 }}>
               Profile
             </T>
@@ -42,8 +45,15 @@ export default function Profile() {
                 </T>
                 <Icon name="chevR" size={15} color={C.muted} />
               </Row>
-              <T size={13.5} lh={20} color={C.muted} style={{ marginTop: 5 }}>
-                {state.profile.intro}
+              {/* Empty until the user writes one — the card is already a tap
+                  target for the editor, so the prompt is the whole affordance. */}
+              <T
+                size={13.5}
+                lh={20}
+                color={state.profile.intro ? C.muted : C.faint}
+                style={{ marginTop: 5 }}
+              >
+                {state.profile.intro || 'Say something about yourself'}
               </T>
             </View>
           </Grad>
@@ -63,10 +73,10 @@ export default function Profile() {
           </Grad>
         </Tap>
 
-        <Group title="Account" style={{ marginTop: 16 }}>
+        <Group title="Your data" style={{ marginTop: 16 }}>
           <RowItem
             icon="user"
-            label="Account & data"
+            label="Data & storage"
             chevron
             onPress={() => router.push('/account')}
           />
@@ -116,7 +126,11 @@ export default function Profile() {
         </Group>
 
         <T size={12.5} weight={500} center color={C.wisp} style={{ marginTop: 22 }}>
-          {streakFor('morning')} days in · Productively 1.4.2
+          {/* A routine exists from the moment onboarding ends, so `leader` is
+              truthy before anything has been run — the footer read "0 days in".
+              The brag only earns its place once there is a streak to brag about. */}
+          {leader && leader.streak > 0 ? `${leader.streak} days in · ` : ''}
+          {APP_LABEL}
         </T>
       </ScrollView>
     </View>

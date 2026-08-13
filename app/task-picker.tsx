@@ -4,6 +4,7 @@ import { Pressable, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Grad, Row, T, Tap } from '../src/ui';
+import { TaskComposer } from '../src/components/TaskComposer';
 import { Icon } from '../src/icons';
 import { C, G, TASK_TONES } from '../src/theme';
 import { PICKER_TASKS } from '../src/data';
@@ -16,6 +17,7 @@ export default function TaskPicker() {
   const insets = useSafeAreaInsets();
   const { state, addTasksToRoutine } = useStore();
   const [picked, setPicked] = useState<string[]>([]);
+  const [compose, setCompose] = useState(false);
 
   const target = routineId ?? state.routines[0]?.id;
 
@@ -39,8 +41,19 @@ export default function TaskPicker() {
           Find tasks that fit you
         </T>
         <T size={14.5} lh={22} center color={C.muted} style={{ marginTop: 10 }}>
-          Pick a few — we'll slot them into the right routine.
+          Pick a few, or write one of your own.
         </T>
+
+        {/* The strapline promised tasks "that fit you" over a fixed list of six
+            that fit nobody in particular. This is the way out of it. */}
+        <Tap onPress={() => setCompose(true)}>
+          <Row gap={10} style={OWN()}>
+            <Icon name="pencil" size={17} color={C.textMid} />
+            <T size={14.5} weight={700} color={C.textMid}>
+              Write your own
+            </T>
+          </Row>
+        </Tap>
 
         <View style={{ marginTop: 22, gap: 11 }}>
           {rows(PICKER_TASKS).map((pair, i) => (
@@ -81,6 +94,17 @@ export default function TaskPicker() {
           style={{ marginTop: 22 }}
         />
       </View>
+
+      <TaskComposer
+        visible={compose}
+        onClose={() => setCompose(false)}
+        onSubmit={(draft) => {
+          // `id` is a placeholder — addTasksToRoutine mints the real one, so a
+          // task added twice cannot end up sharing a key with its twin.
+          if (target) addTasksToRoutine(target, [{ ...draft, id: 'draft' }]);
+          router.back();
+        }}
+      />
     </View>
   );
 }
@@ -107,6 +131,16 @@ const GRABBER = () => ({
   backgroundColor: C.borderStrong,
   alignSelf: 'center' as const,
   marginBottom: 20,
+});
+
+const OWN = () => ({
+  marginTop: 16,
+  paddingVertical: 14,
+  borderRadius: 14,
+  borderWidth: 1.5,
+  borderColor: C.borderStrong,
+  borderStyle: 'dashed' as const,
+  justifyContent: 'center' as const,
 });
 
 const TILE = {

@@ -1,4 +1,12 @@
-/** 1.10 Streak started. */
+/**
+ * 1.10 Streak started — the last screen of onboarding.
+ *
+ * The board follows this with 1.11 "first routine prepared", whose CTA is
+ * "Start — done by 8:07am": a launch pad, not a setup step. Renamed to "Done
+ * at …" it read as a second confirmation arriving *after* a screen that already
+ * said "You're all set to flow", so the flow ends here instead and Get started
+ * goes to Home. 1.11 stays in the tree; it is simply no longer in the way.
+ */
 import React from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
@@ -6,11 +14,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Grad, Spacer, T } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { C, G } from '../../src/theme';
+import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
 export default function StreakStarted() {
   useT();
   const insets = useSafeAreaInsets();
+  const { finishOnboarding } = useStore();
 
   return (
     <Grad
@@ -41,7 +51,12 @@ export default function StreakStarted() {
       <Spacer />
       <Button
         label="Get started"
-        onPress={() => router.push('/onboarding/first-routine')}
+        onPress={() => {
+          // Marks onboarding done, moves the morning routine to the wake time
+          // picked on 1.7, and creates that routine if nothing is seeded.
+          finishOnboarding();
+          router.replace('/(tabs)/home');
+        }}
         style={{ alignSelf: 'stretch' }}
       />
     </Grad>

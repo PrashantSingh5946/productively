@@ -15,10 +15,11 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const out = mkdtempSync(join(tmpdir(), 'productively-backup-'));
+// Direct, not via `npx` — see the same note in check-contrast.mjs.
 execFileSync(
-  'npx',
+  process.execPath,
   [
-    'tsc',
+    'node_modules/typescript/bin/tsc',
     'src/backup/fold.ts',
     'src/backup/settings.ts',
     'src/backup/format.ts',

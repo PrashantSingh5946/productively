@@ -7,10 +7,11 @@ import { Grad, Group, RowItem, Spacer, T, Tap, TopBar } from '../src/ui';
 import { Icon } from '../src/icons';
 import { C, G } from '../src/theme';
 import { CONTACT_TOPICS } from '../src/data';
+import { APP_LABEL, APP_LABEL_PLATFORM } from '../src/release';
 
 import { useT } from '../src/theming';
 const mailto = (subject: string) =>
-  `mailto:hello@productively.app?subject=${encodeURIComponent(`[${subject}] Productively 1.4.2`)}`;
+  `mailto:hello@productively.app?subject=${encodeURIComponent(`[${subject}] ${APP_LABEL}`)}`;
 
 export default function Contact() {
   useT();
@@ -58,7 +59,7 @@ export default function Contact() {
         color={C.wisp}
         style={{ paddingBottom: insets.bottom + 16 }}
       >
-        Productively 1.4.2 · Android
+        {APP_LABEL_PLATFORM}
       </T>
     </View>
   );

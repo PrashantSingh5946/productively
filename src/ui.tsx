@@ -17,6 +17,7 @@ import {
   ScrollView,
   StyleSheet,
   Text as RNText,
+  TextInput,
   TextProps,
   View,
   ViewStyle,
@@ -296,6 +297,7 @@ export const chipSkin = (): ViewStyle => ({ backgroundColor: C.chipFrom });
 
 export function Tap({
   onPress,
+  onLongPress,
   children,
   style,
   disabled,
@@ -303,22 +305,36 @@ export function Tap({
   hitSlop,
 }: {
   onPress?: () => void;
+  /** Secondary action on a row — rename / remove, where a button would crowd. */
+  onLongPress?: () => void;
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
   disabled?: boolean;
   haptic?: boolean;
   hitSlop?: number;
 }) {
+  const buzz = (weight: Haptics.ImpactFeedbackStyle) => {
+    if (haptic && haptics.enabled && Platform.OS !== 'web') {
+      Haptics.impactAsync(weight).catch(() => {});
+    }
+  };
   return (
     <Pressable
       hitSlop={hitSlop}
-      disabled={disabled || !onPress}
+      disabled={disabled || !(onPress || onLongPress)}
       onPress={() => {
-        if (haptic && haptics.enabled && Platform.OS !== 'web') {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-        }
+        buzz(Haptics.ImpactFeedbackStyle.Light);
         onPress?.();
       }}
+      onLongPress={
+        onLongPress &&
+        (() => {
+          // Heavier than a tap: the only signal that the long press registered
+          // before the sheet animates in.
+          buzz(Haptics.ImpactFeedbackStyle.Medium);
+          onLongPress();
+        })
+      }
       style={({ pressed }) => [style, pressed && { opacity: 0.75 }]}
     >
       {children}
@@ -789,15 +805,15 @@ export function Segmented({
                   {body}
                 </Grad>
               ) : (
-                <View
-                  style={{
-                    backgroundColor: t.card,
-                    borderRadius: RADIUS.pill,
-                    boxShadow: SHADOW.row,
-                  }}
-                >
-                  {body}
-                </View>
+                // rowSkin() rather than a bare background + shadow. On Android a
+                // plain view carrying a *pill* radius (999, far larger than the
+                // view) together with `boxShadow` and no border paints its
+                // background square: the chip rendered as a hard white rectangle
+                // sitting inside its own perfectly round track. The hairline
+                // border is what makes the radius stick. The knob in `Toggle`
+                // and the interior of `Dial` are borderless too but use a radius
+                // of exactly half their size, and those are fine.
+                <View style={[rowSkin(), { borderRadius: RADIUS.pill }]}>{body}</View>
               )
             ) : (
               body
@@ -949,6 +965,173 @@ export function Dialog({
         </View>
       </View>
     </Modal>
+  );
+}
+
+/**
+ * A one-line text field in a dialog — "name this list", "rename this task".
+ *
+ * The app had no way to type anything a screen had not already written for it,
+ * which is why every create affordance was either missing or wired to a
+ * hardcoded string. This is the primitive the create flows are built on.
+ *
+ * `visible` is what mounts it, and the draft resets on every open, so a
+ * cancelled edit never leaks into the next one.
+ */
+export function Prompt({
+  visible,
+  title,
+  placeholder,
+  initial = '',
+  confirm = 'Save',
+  keyboard = 'default',
+  autoClose = true,
+  onClose,
+  onSubmit,
+}: {
+  visible: boolean;
+  title: string;
+  placeholder?: string;
+  initial?: string;
+  confirm?: string;
+  keyboard?: 'default' | 'number-pad';
+  /**
+   * False leaves the dialog standing and empties the field instead, so a list
+   * can be filled item after item without reopening it. The caller then owns
+   * dismissal — either by moving its own state on, or by Cancel.
+   */
+  autoClose?: boolean;
+  onClose: () => void;
+  onSubmit: (value: string) => void;
+}) {
+  const t = useT();
+  const [draft, setDraft] = React.useState(initial);
+  const field = React.useRef<TextInput>(null);
+
+  React.useEffect(() => {
+    if (!visible) return;
+    setDraft(initial);
+    // `autoFocus` does not survive being mounted inside a Modal on Android —
+    // the window takes focus after the child mounts, so the request is made
+    // against a view that is not attached yet and is silently dropped. One
+    // frame later it lands, and the keyboard comes up with the dialog instead
+    // of after a second tap on the field.
+    const id = setTimeout(() => field.current?.focus(), 60);
+    return () => clearTimeout(id);
+  }, [visible, initial]);
+
+  const submit = () => {
+    const v = draft.trim();
+    if (!v) return;
+    onSubmit(v);
+    if (autoClose) onClose();
+    else setDraft('');
+  };
+
+  return (
+    <Dialog visible={visible} onClose={onClose}>
+      <T d size={21} weight={800}>
+        {title}
+      </T>
+      <View
+        style={{
+          marginTop: 16,
+          borderRadius: RADIUS.tile,
+          borderWidth: 1.5,
+          borderColor: t.borderStrong,
+          paddingHorizontal: 16,
+          paddingVertical: Platform.OS === 'ios' ? 14 : 6,
+        }}
+      >
+        <TextInput
+          ref={field}
+          value={draft}
+          onChangeText={setDraft}
+          placeholder={placeholder}
+          placeholderTextColor={t.ghost}
+          keyboardType={keyboard}
+          returnKeyType="done"
+          onSubmitEditing={submit}
+          style={{
+            fontFamily: F.medium,
+            fontSize: 16,
+            color: t.ink,
+            padding: 0,
+          }}
+        />
+      </View>
+      <Row gap={10} style={{ marginTop: 18, justifyContent: 'flex-end' }}>
+        <Tap onPress={onClose}>
+          <T size={15} weight={600} color={t.muted} style={{ padding: 10 }}>
+            Cancel
+          </T>
+        </Tap>
+        <Tap onPress={submit}>
+          <T size={15} weight={700} color={draft.trim() ? t.accentInk : t.ghost} style={{ padding: 10 }}>
+            {confirm}
+          </T>
+        </Tap>
+      </Row>
+    </Dialog>
+  );
+}
+
+/**
+ * The recurring "⋯ on a row" menu — a sheet of labelled actions, one of which
+ * may be destructive. Saves every screen hand-rolling the same list of rows.
+ */
+export function MenuSheet({
+  visible,
+  title,
+  actions,
+  onClose,
+}: {
+  visible: boolean;
+  title?: string;
+  actions: { key: string; label: string; icon?: IconName; danger?: boolean; onPress: () => void }[];
+  onClose: () => void;
+}) {
+  const t = useT();
+  return (
+    <Sheet visible={visible} onClose={onClose}>
+      {title ? (
+        <T d size={22} weight={800} style={{ marginBottom: 4 }}>
+          {title}
+        </T>
+      ) : null}
+      <View style={{ gap: 10, marginTop: 16 }}>
+        {actions.map((a) => (
+          <Tap
+            key={a.key}
+            onPress={() => {
+              onClose();
+              a.onPress();
+            }}
+          >
+            <View
+              style={[
+                rowSkin(),
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 14,
+                  paddingVertical: 17,
+                  paddingHorizontal: 18,
+                  borderRadius: RADIUS.tile,
+                },
+              ]}
+            >
+              {a.icon ? (
+                <Icon name={a.icon} size={20} color={a.danger ? t.danger : t.textMid} />
+              ) : null}
+              <T size={16} weight={700} color={a.danger ? t.danger : t.ink} style={{ flex: 1 }}>
+                {a.label}
+              </T>
+            </View>
+          </Tap>
+        ))}
+      </View>
+    </Sheet>
   );
 }
 

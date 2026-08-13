@@ -12,19 +12,18 @@ import * as Haptics from 'expo-haptics';
 import { Button, Dial, Grad, IconButton, Row, Spacer, T, Tap, rowSkin } from '../../src/ui';
 import { Icon, MoodFace } from '../../src/icons';
 import { C, G, SHADOW, TASK_TONES } from '../../src/theme';
-import { Routine, Task, mmss, totalMinutes } from '../../src/data';
+import { Routine, Task, TaskSpent, mmss, totalMinutes } from '../../src/data';
+import { weekSummary } from '../../src/analytics';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
-type Result = { taskId: string; spent: number; skipped: boolean };
+type Result = TaskSpent;
 
 const QUICK: Routine = {
   id: 'quick',
   name: 'Quick timer',
   start: 0,
   days: [],
-  streak: 0,
-  rate: 0,
   tasks: [{ id: 'q1', title: 'One task, right now', icon: 'alarm', tone: 'target', minutes: 5 }],
 };
 
@@ -117,7 +116,11 @@ export default function Run() {
       <Complete
         routine={r}
         results={results}
+        // Today's run is not recorded until Done, so the live streak is one short.
         streak={streakFor(r.id) + 1}
+        // The board's third stat is "This week · on average", so it has to be
+        // the week, not a rolling window.
+        weekRate={weekSummary([r], state.sessions, state.settings.weekStart).pct}
         moodEnabled={cfg.moodReview}
         onDone={(mood, note) => {
           const spentSec = results.reduce((s, x) => s + x.spent, 0);
@@ -128,6 +131,8 @@ export default function Run() {
             total: r.tasks.length,
             mood,
             note,
+            // The per-task record is what "where the time goes" averages over.
+            taskSpent: results,
           });
           if (note) addNote(r.id, note);
           router.replace('/(tabs)/home');
@@ -466,12 +471,15 @@ function Complete({
   routine,
   results,
   streak,
+  weekRate,
   moodEnabled,
   onDone,
 }: {
   routine: Routine;
   results: Result[];
   streak: number;
+  /** This week's completion as a percentage, or null with nothing scheduled yet. */
+  weekRate: number | null;
   moodEnabled: boolean;
   onDone: (mood: number | undefined, note: string | undefined) => void;
 }) {
@@ -514,8 +522,8 @@ function Complete({
             sub={`Tasks done\n${skipped} skipped`}
           />
           <Stat
-            big={`${Math.round(routine.rate * 100)}%`}
-            sub={'This week\non average'}
+            big={weekRate === null ? '—' : `${weekRate}%`}
+            sub={weekRate === null ? 'This week\nfirst one in' : 'This week\non average'}
             color={C.good}
           />
         </Row>

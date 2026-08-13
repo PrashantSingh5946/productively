@@ -5,18 +5,32 @@
 import React, { useMemo, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Dialog, Grad, MeterRow, Overline, Row, Sheet, T, Tap, cardSkin, rowSkin } from '../../src/ui';
+import {
+  Dialog,
+  Grad,
+  MeterRow,
+  Overline,
+  Row,
+  Segmented,
+  Sheet,
+  T,
+  Tap,
+  cardSkin,
+  rowSkin,
+} from '../../src/ui';
 import { Icon, MoodFace } from '../../src/icons';
 import { C, DOCK_CLEARANCE, G, RADIUS, TASK_TONES } from '../../src/theme';
+import { DAY_LETTERS, MOMENTUM_TIERS, stepColor, tierFor } from '../../src/data';
 import {
-  DAY_LETTERS,
-  MOMENTUM_TIERS,
-  stepColor,
-  THIRTY_DAY,
-  TIME_SPENT,
-  WEEK_GRID,
-  tierFor,
-} from '../../src/data';
+  avgLabel,
+  bestStreak,
+  insightFor,
+  thirtyDay,
+  timeSpent,
+  weekGrid,
+  weekStartDate,
+  weekSummary,
+} from '../../src/analytics';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
@@ -29,7 +43,8 @@ export default function Analysis() {
   const [rings, setRings] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const streak = Math.max(...state.routines.map((r) => r.streak)) + 1;
+  const leader = bestStreak(state.routines, state.sessions);
+  const streak = leader?.streak ?? 0;
 
   return (
     <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
@@ -38,28 +53,19 @@ export default function Analysis() {
         showsVerticalScrollIndicator={false}
       >
         <Overline style={{ paddingTop: 14, paddingLeft: 2 }}>Last 30 days</Overline>
-        <Row gap={6} style={{ paddingTop: 4 }}>
-          {(['analysis', 'note'] as const).map((k) => {
-            const on = tab === k;
-            const label = k === 'analysis' ? 'Analysis' : 'Note';
-            return (
-              <Tap key={k} onPress={() => setTab(k)}>
-                {on ? (
-                  <View style={[BIG_TAB, rowSkin()]}>
-                    <T d size={21} weight={800}>
-                      {label}
-                    </T>
-                  </View>
-                ) : (
-                  <View style={BIG_TAB}>
-                    <T d size={21} weight={800} color={C.faint}>
-                      {label}
-                    </T>
-                  </View>
-                )}
-              </Tap>
-            );
-          })}
+
+        {/* The same pill switch Home uses for Routine / Checklist. These were
+            two 21px display words with a white capsule behind the live one —
+            a different control for the identical job, on the adjacent tab. */}
+        <Row style={{ paddingTop: 10 }}>
+          <Segmented
+            options={[
+              { key: 'analysis', label: 'Analysis' },
+              { key: 'note', label: 'Note' },
+            ]}
+            value={tab}
+            onChange={(k) => setTab(k as 'analysis' | 'note')}
+          />
         </Row>
 
         <ScopeBar
@@ -75,9 +81,9 @@ export default function Analysis() {
           ) : (
             <PerRoutine routineId={scope} />
           )
-        ) : (
+        ) : state.routines.length ? (
           <Notes routineId={scope === 'summary' ? state.routines[0].id : scope} />
-        )}
+        ) : null}
       </ScrollView>
 
       <RingsDialog visible={rings} onClose={() => setRings(false)} streak={streak} />
@@ -181,12 +187,18 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
   const toNext = Math.max(0, tier.to - streak + 1);
 
   const best = useMemo(
-    () => state.routines.slice().sort((a, b) => b.streak - a.streak)[0],
-    [state.routines]
+    () => bestStreak(state.routines, state.sessions)?.routine,
+    [state.routines, state.sessions]
   );
 
-  const weekly = Math.round(
-    (state.routines.reduce((s, r) => s + r.rate, 0) / state.routines.length) * 100
+  const week = useMemo(
+    () => weekSummary(state.routines, state.sessions, state.settings.weekStart),
+    [state.routines, state.sessions, state.settings.weekStart]
+  );
+
+  const grid = useMemo(
+    () => weekGrid(state.routines, state.sessions, state.settings.weekStart),
+    [state.routines, state.sessions, state.settings.weekStart]
   );
 
   return (
@@ -198,10 +210,10 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
               Max. streak
             </T>
             <T d size={38} weight={800} lh={42} style={{ marginTop: 6 }}>
-              {streak} days
+              {streak} {streak === 1 ? 'day' : 'days'}
             </T>
             <T size={14} weight={500} color={C.muted} style={{ marginTop: 4 }}>
-              {best.name}
+              {best?.name ?? 'No routines yet'}
             </T>
           </View>
           <Tap onPress={onRings}>
@@ -248,7 +260,7 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
             <Icon name="chevL" size={15} color={C.muted} />
           </Grad>
           <T size={14} weight={600} color={C.textMid}>
-            {weekLabel()}
+            {weekLabel(state.settings.weekStart)}
           </T>
           <Grad colors={G.card} style={[NAV, rowSkin()]}>
             <Icon name="chevR" size={15} color={C.muted} />
@@ -259,10 +271,10 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
       <Grad colors={G.card} style={[WEEK_CARD, cardSkin()]}>
         <View style={{ flex: 1 }}>
           <T d size={30} weight={800}>
-            {weekly}%
+            {week.pct === null ? '—' : `${week.pct}%`}
           </T>
           <T size={13} weight={500} lh={18} color={C.muted} style={{ marginTop: 6 }}>
-            {'completed · up 8 points\non last week'}
+            {weekCaption(week)}
           </T>
         </View>
         <Grad colors={G.accent} diag style={FACE_BADGE}>
@@ -278,7 +290,7 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
             </T>
           ))}
         </Row>
-        {WEEK_GRID.map((row) => (
+        {grid.map((row) => (
           <Row key={row.routineId} style={{ marginTop: 14 }}>
             <T size={13.5} weight={500} color={C.textMid} style={{ width: 96 }}>
               {row.label}
@@ -312,10 +324,22 @@ function DayDot({ state }: { state: 0 | 1 | 2 | 3 }) {
   );
 }
 
-function weekLabel() {
-  const now = new Date();
-  const start = new Date(now);
-  start.setDate(now.getDate() - now.getDay());
+/**
+ * The board's "completed · up 8 points on last week". The delta is only claimed
+ * when there is a previous week to compare against — before that the line just
+ * says what the number is.
+ */
+function weekCaption({ pct, deltaPoints }: { pct: number | null; deltaPoints: number | null }) {
+  if (pct === null) return 'nothing scheduled\nthis week yet';
+  if (deltaPoints === null) return 'completed · first week\non record';
+  if (deltaPoints === 0) return 'completed · level\nwith last week';
+  const dir = deltaPoints > 0 ? 'up' : 'down';
+  const n = Math.abs(deltaPoints);
+  return `completed · ${dir} ${n} point${n === 1 ? '' : 's'}\non last week`;
+}
+
+function weekLabel(weekStart: 'Sun' | 'Mon' = 'Sun') {
+  const start = weekStartDate(new Date(), weekStart);
   const end = new Date(start);
   end.setDate(start.getDate() + 6);
   const m = (d: Date) => d.toLocaleDateString(undefined, { month: 'short' });
@@ -327,9 +351,17 @@ function weekLabel() {
 /* ── 4.2 per-routine ──────────────────────────────────────────────── */
 
 function PerRoutine({ routineId }: { routineId: string }) {
-  const { routine } = useStore();
+  const { routine, state } = useStore();
   const r = routine(routineId);
-  const hits = THIRTY_DAY.filter((b) => b.hit).length;
+
+  const chart = useMemo(
+    () => (r ? thirtyDay(r, state.sessions) : null),
+    [r, state.sessions]
+  );
+  const spent = useMemo(() => (r ? timeSpent(r, state.sessions) : []), [r, state.sessions]);
+  const insight = useMemo(() => (r ? insightFor(r, state.sessions) : null), [r, state.sessions]);
+
+  if (!r || !chart) return null;
 
   return (
     <>
@@ -339,85 +371,104 @@ function PerRoutine({ routineId }: { routineId: string }) {
             Last 30 days
           </T>
           <T size={13} weight={500} color={C.muted}>
-            {Math.round((hits / THIRTY_DAY.length) * 30)} of 30 completed
+            {chart.scheduled === 0
+              ? 'Nothing scheduled yet'
+              : `${chart.completed} of ${chart.scheduled} completed`}
           </T>
         </Row>
 
-        <Row gap={5} center={false} style={{ height: 120, marginTop: 18, alignItems: 'flex-end' }}>
-          {THIRTY_DAY.map((b, i) =>
-            b.hit ? (
-              <Grad
-                key={i}
-                colors={G.accent}
-                diag
-                style={{ flex: 1, height: `${b.h * 100}%`, borderRadius: 5 }}
-              />
-            ) : (
-              <View
-                key={i}
-                style={{ flex: 1, height: `${b.h * 100}%`, borderRadius: 5, backgroundColor: C.track }}
-              />
-            )
-          )}
-        </Row>
+        {chart.bars.length ? (
+          <>
+            <Row gap={5} center={false} style={{ height: 120, marginTop: 18, alignItems: 'flex-end' }}>
+              {chart.bars.map((b) =>
+                b.hit ? (
+                  <Grad
+                    key={b.day}
+                    colors={G.accent}
+                    diag
+                    style={{ flex: 1, height: `${b.h * 100}%`, borderRadius: 5 }}
+                  />
+                ) : (
+                  <View
+                    key={b.day}
+                    style={{ flex: 1, height: `${b.h * 100}%`, borderRadius: 5, backgroundColor: C.track }}
+                  />
+                )
+              )}
+            </Row>
 
-        <Row style={{ justifyContent: 'space-between', marginTop: 10 }}>
-          {rangeLabels().map((l) => (
-            <T key={l} size={11.5} weight={500} color={C.ghost}>
-              {l}
-            </T>
-          ))}
-        </Row>
+            <Row style={{ justifyContent: 'space-between', marginTop: 10 }}>
+              {rangeLabels(chart.bars.map((b) => b.day)).map((l, i) => (
+                <T key={`${l}-${i}`} size={11.5} weight={500} color={C.ghost}>
+                  {l}
+                </T>
+              ))}
+            </Row>
+          </>
+        ) : (
+          <T size={13.5} lh={21} color={C.muted} style={{ marginTop: 14 }}>
+            Run this routine once and its history starts here.
+          </T>
+        )}
       </Grad>
 
-      <T d size={19} weight={800} style={{ marginTop: 14 }}>
-        Where the time goes
-      </T>
+      {spent.length ? (
+        <>
+          <T d size={19} weight={800} style={{ marginTop: 14 }}>
+            Where the time goes
+          </T>
 
-      <View style={{ gap: 10, marginTop: 14 }}>
-        {TIME_SPENT.map((t) => (
-          <Row key={t.taskId} gap={13}>
-            <View style={[SMALL_ICON, { backgroundColor: TASK_TONES[t.tone].bg }]}>
-              <Icon name={t.icon} size={17} color={TASK_TONES[t.tone].fg} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <T size={14.5} weight={600}>
-                {t.title}
-              </T>
-              <View style={{ marginTop: 7 }}>
-                <MeterRow value={t.pct} over={t.over} />
-              </View>
-            </View>
-            <T
-              size={13}
-              weight={700}
-              color={t.over ? C.over : C.textSoft}
-              style={{ width: 56, textAlign: 'right' }}
-            >
-              {t.avg}
-            </T>
-          </Row>
-        ))}
-      </View>
+          <View style={{ gap: 10, marginTop: 14 }}>
+            {spent.map((t) => (
+              <Row key={t.taskId} gap={13}>
+                <View style={[SMALL_ICON, { backgroundColor: TASK_TONES[t.tone].bg }]}>
+                  <Icon name={t.icon} size={17} color={TASK_TONES[t.tone].fg} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <T size={14.5} weight={600}>
+                    {t.title}
+                  </T>
+                  <View style={{ marginTop: 7 }}>
+                    <MeterRow value={t.pct} over={t.over} />
+                  </View>
+                </View>
+                <T
+                  size={13}
+                  weight={700}
+                  color={t.over ? C.over : C.textSoft}
+                  style={{ width: 56, textAlign: 'right' }}
+                >
+                  {avgLabel(t.avgSeconds)}
+                </T>
+              </Row>
+            ))}
+          </View>
+        </>
+      ) : null}
 
-      <Grad colors={G.accentWash} diag style={INSIGHT()}>
-        <Icon name="spark" size={20} color={C.accentInkSoft} />
-        <T size={13.5} weight={500} lh={20} color={C.accentText} style={{ flex: 1 }}>
-          {r ? `${TIME_SPENT[0].title} overruns 4 days in 5. Try moving it after ${TIME_SPENT[1].title.toLowerCase()}, or cap it at 10 minutes.` : ''}
-        </T>
-      </Grad>
+      {insight ? (
+        <Grad colors={G.accentWash} diag style={INSIGHT()}>
+          <Icon name="spark" size={20} color={C.accentInkSoft} />
+          <T size={13.5} weight={500} lh={20} color={C.accentText} style={{ flex: 1 }}>
+            {insight}
+          </T>
+        </Grad>
+      ) : null}
     </>
   );
 }
 
-function rangeLabels() {
-  const now = new Date();
-  const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-  const a = new Date(now);
-  a.setDate(now.getDate() - 29);
-  const b = new Date(now);
-  b.setDate(now.getDate() - 15);
-  return [fmt(a), fmt(b), fmt(now)];
+/** First, middle and last day actually plotted — not a fixed 30-day window. */
+function rangeLabels(days: string[]) {
+  if (!days.length) return [];
+  const fmt = (day: string) => {
+    const d = new Date(`${day}T00:00:00`);
+    return Number.isNaN(d.getTime())
+      ? day
+      : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+  const picks = [days[0], days[Math.floor(days.length / 2)], days[days.length - 1]];
+  return Array.from(new Set(picks)).map(fmt);
 }
 
 /* ── 4.3 momentum rings ───────────────────────────────────────────── */
@@ -596,7 +647,6 @@ function Notes({ routineId }: { routineId: string }) {
 
 /* ── styles ───────────────────────────────────────────────────────── */
 
-const BIG_TAB = { paddingVertical: 11, paddingHorizontal: 22, borderRadius: 999 };
 const SCOPE_ON = { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 999 };
 const SCOPE_OFF = { paddingVertical: 10, paddingHorizontal: 18, borderRadius: 999 };
 const MORE = {

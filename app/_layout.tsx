@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -20,6 +20,7 @@ import { BackupProvider } from '../src/backup/context';
 // Side-effect import: TaskManager.defineTask has to run before the OS can hand
 // us a background wake-up, and it must happen at module scope.
 import '../src/backup/task';
+import { syncAlarms } from '../src/alarms';
 import { C } from '../src/theme';
 import { ThemeProvider, useT, useThemeInfo } from '../src/theming';
 
@@ -57,7 +58,47 @@ export default function RootLayout() {
 
 /** Sits inside the store so the accent and theme preference can drive the tokens. */
 function Themed() {
-  const { state } = useStore();
+  const { state, ready } = useStore();
+
+  /*
+    Reminders are rebuilt from the routines rather than kept in step by hand.
+    Renaming a routine, moving its start time or dropping a weekday all have to
+    reach the OS schedule, and every one of those is a different call site —
+    watching the data is the only version that cannot drift.
+
+    Waits for `ready`: before hydration the routines are still the seed, and
+    scheduling those would post reminders for routines the user does not have.
+  */
+  /*
+    Keyed on a signature, not on `state.routines`. Every store write clones the
+    whole tree, so the array identity changes when a checklist item is ticked —
+    depending on it would cancel and re-post the entire OS schedule on each tap.
+    Only these five fields can change what a reminder says or when it fires.
+  */
+  const signature = useMemo(
+    () =>
+      state.routines
+        .map((r) => `${r.id}|${r.name}|${r.start}|${r.days.join('')}|${r.tasks.length}`)
+        .join('~'),
+    [state.routines]
+  );
+
+  useEffect(() => {
+    if (!ready) return;
+    syncAlarms(state.routines, {
+      enabled: state.settings.alarms,
+      leadMinutes: state.settings.alarmLead,
+      h24: !state.settings.timeFormat12,
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    ready,
+    signature,
+    state.settings.alarms,
+    state.settings.alarmLead,
+    state.settings.timeFormat12,
+  ]);
+
   return (
     <ThemeProvider accent={state.settings.accent} pref={state.settings.theme}>
       <Navigation />

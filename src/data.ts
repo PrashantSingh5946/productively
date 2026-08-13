@@ -1,7 +1,12 @@
 /**
- * Seed content. The board is explicit that the app should read as a lived-in
- * account — a 13-day run, real analysis, a small friends list — not a fresh
- * install, so these numbers are the ones drawn on the screens.
+ * Static content — the library, the guide, the onboarding copy — and the shapes
+ * everything else is built from.
+ *
+ * What is *not* here any more: the user's account. The board draws a lived-in
+ * 13-day history, and this file used to hold that history as frozen numbers
+ * (`WEEK_GRID`, `THIRTY_DAY`, `TIME_SPENT`, a `streak` on each routine) that the
+ * analysis screens rendered as though they had been calculated. They are now
+ * generated as real sessions in ./demo and derived in ./analytics.
  */
 import { IconName } from './icons';
 import { C, IDENTITY, TaskTone } from './theme';
@@ -23,9 +28,6 @@ export type Routine = {
   /** 0 = Sunday. */
   days: number[];
   tasks: Task[];
-  streak: number;
-  /** Rolling completion, shown on the home cards. */
-  rate: number;
 };
 
 export type ChecklistGroup = {
@@ -46,16 +48,25 @@ export type NoteEntry = {
   body: string;
 };
 
+/** What one task cost on one run. `spent` is seconds. */
+export type TaskSpent = { taskId: string; spent: number; skipped: boolean };
+
 export type Session = {
   id: string;
   routineId: string;
-  /** ISO day. */
+  /** Local calendar day, `YYYY-MM-DD`. See `dayKey` in ./analytics. */
   day: string;
   durationMin: number;
   done: number;
   total: number;
   mood?: number;
   note?: string;
+  /**
+   * Per-task timings. Optional because sessions recorded before this existed
+   * do not have it — "where the time goes" skips those runs rather than
+   * averaging in a zero.
+   */
+  taskSpent?: TaskSpent[];
 };
 
 const t = (
@@ -66,160 +77,10 @@ const t = (
   minutes: number
 ): Task => ({ id, title, icon, tone, minutes });
 
-export const MORNING_TASKS: Task[] = [
-  t('m1', 'Stretch and drink water', 'bottle', 'water', 2),
-  t('m2', 'Tidy up the bed', 'bed', 'bed', 2),
-  t('m3', 'Deep breathing', 'leaf', 'leaf', 3),
-  t('m4', 'Pep talk', 'heart', 'heart', 3),
-  t('m5', 'Morning pages', 'pencil', 'pencil', 10),
-  t('m6', 'Coffee, no phone', 'cup', 'cup', 8),
-  t('m7', "Pick today's one thing", 'target', 'target', 6),
-];
-
-export const ROUTINES: Routine[] = [
-  {
-    id: 'morning',
-    name: 'Morning routine',
-    start: 8 * 60,
-    days: [1, 2, 3, 4, 5],
-    tasks: MORNING_TASKS,
-    streak: 12,
-    rate: 0.96,
-  },
-  {
-    id: 'deep',
-    name: 'Deep work block',
-    start: 13 * 60 + 30,
-    days: [1, 2, 3, 4, 5],
-    tasks: [
-      t('d1', 'Silence every notification', 'screen', 'screen', 1),
-      t('d2', 'Name the outcome', 'target', 'target', 4),
-      t('d3', 'Deep sprint', 'flask', 'pencil', 50),
-      t('d4', 'Stand up and stretch', 'dumbbell', 'dumbbell', 5),
-    ],
-    streak: 6,
-    rate: 0.96,
-  },
-  {
-    id: 'wind',
-    name: 'Wind down',
-    start: 21 * 60 + 30,
-    days: [0, 1, 2, 3, 4, 5, 6],
-    tasks: [
-      t('w1', 'Tea before bed', 'cup', 'cup', 5),
-      t('w2', 'Screens off', 'screen', 'screen', 2),
-      t('w3', 'Three lines in the journal', 'pencil', 'pencil', 5),
-      t('w4', "Tomorrow's one thing", 'target', 'target', 4),
-      t('w5', 'Read ten pages', 'book', 'book', 10),
-    ],
-    streak: 9,
-    rate: 0.88,
-  },
-];
-
-export const CHECKLISTS: ChecklistGroup[] = [
-  {
-    id: 'go',
-    title: 'Before you go',
-    items: [
-      { id: 'g1', title: 'Wallet, keys, pass', done: true },
-      { id: 'g2', title: 'Gas and electronics off', done: true },
-      { id: 'g3', title: 'Water bottle refilled', done: false },
-      { id: 'g4', title: 'Laptop charger', done: false },
-      { id: 'g5', title: 'Headphones', done: true },
-      { id: 'g6', title: 'Lunch packed', done: true },
-      { id: 'g7', title: 'Office badge', done: true },
-      { id: 'g8', title: 'Umbrella if rain', done: false },
-    ],
-  },
-  {
-    id: 'reset',
-    title: 'Weekly reset',
-    items: [
-      { id: 'r1', title: 'Empty the inbox', done: true },
-      { id: 'r2', title: "Plan next week's blocks", done: false },
-      { id: 'r3', title: 'Laundry and sheets', done: false },
-      { id: 'r4', title: 'Groceries order', done: false },
-    ],
-  },
-];
-
-export const NOTES: NoteEntry[] = [
-  {
-    id: 'n1',
-    routineId: 'morning',
-    day: 'Thu, Aug 6',
-    durationMin: 34,
-    done: 7,
-    total: 7,
-    ring: 0,
-    body: 'Doing the breathing before the bed made the whole thing feel calmer. Keep that order.',
-  },
-  {
-    id: 'n2',
-    routineId: 'morning',
-    day: 'Tue, Aug 4',
-    durationMin: 41,
-    done: 6,
-    total: 7,
-    ring: 1,
-    body: 'Woke up late, skipped the pep talk and still finished. Good to know it survives a bad start.',
-  },
-  {
-    id: 'n3',
-    routineId: 'morning',
-    day: 'Mon, Aug 3',
-    durationMin: 33,
-    done: 7,
-    total: 7,
-    ring: 0,
-    body: 'Phone stayed in the other room. Easiest morning in weeks.',
-  },
-  {
-    id: 'n4',
-    routineId: 'wind',
-    day: 'Wed, Aug 5',
-    durationMin: 24,
-    done: 5,
-    total: 5,
-    ring: 0,
-    body: 'Tea first, then the journal. Asleep before eleven for once.',
-  },
-];
-
 /* ── analysis ─────────────────────────────────────────────────────── */
 
-/** 0 miss · 1 partial · 2 done · 3 not scheduled */
+/** 0 miss · 1 partial · 2 done · 3 not scheduled or not here yet */
 export type DayState = 0 | 1 | 2 | 3;
-
-export const WEEK_GRID: { routineId: string; label: string; days: DayState[] }[] = [
-  { routineId: 'morning', label: 'Morning', days: [3, 2, 2, 2, 2, 2, 3] },
-  { routineId: 'deep', label: 'Deep work', days: [3, 2, 1, 2, 2, 0, 3] },
-  { routineId: 'wind', label: 'Wind down', days: [2, 2, 2, 0, 2, 0, 3] },
-];
-
-/** Per-routine 30-day bars, as drawn (12 sampled columns). */
-export const THIRTY_DAY = [
-  { h: 0.52, hit: false },
-  { h: 0.74, hit: false },
-  { h: 1.0, hit: true },
-  { h: 0.88, hit: true },
-  { h: 0.36, hit: false },
-  { h: 0.92, hit: true },
-  { h: 0.7, hit: false },
-  { h: 1.0, hit: true },
-  { h: 0.96, hit: true },
-  { h: 0.44, hit: false },
-  { h: 0.86, hit: true },
-  { h: 1.0, hit: true },
-];
-
-export const TIME_SPENT = [
-  { taskId: 'm5', title: 'Morning pages', icon: 'pencil', tone: 'pencil', pct: 0.92, avg: '12m avg', over: true },
-  { taskId: 'm6', title: 'Coffee, no phone', icon: 'cup', tone: 'cup', pct: 0.62, avg: '8m avg', over: false },
-  { taskId: 'm7', title: "Pick today's one thing", icon: 'target', tone: 'target', pct: 0.44, avg: '5m avg', over: false },
-  { taskId: 'm3', title: 'Deep breathing', icon: 'leaf', tone: 'leaf', pct: 0.24, avg: '3m avg', over: false },
-] as { taskId: string; title: string; icon: IconName; tone: TaskTone; pct: number; avg: string; over: boolean }[];
 
 export const MOMENTUM_TIERS = [
   { name: 'First light', range: 'day 1', from: 1, to: 1, step: 0 },
@@ -375,9 +236,90 @@ export const RESET_CARDS = [
   },
 ];
 
+/**
+ * What is behind a reset card.
+ *
+ * Both cards used to open the article index — the same destination as every
+ * other card on the screen, and the wrong shape entirely: a rescue card is
+ * something you tap *while* it is happening, and reading five volumes on habit
+ * design is not that. Each is a short paced sequence instead, run by
+ * `app/reset/[id].tsx`.
+ *
+ * `loop` repeats the steps until stopped, which is what a breathing exercise
+ * is; grounding runs once and finishes.
+ */
+export type ResetStep = { label: string; note?: string; seconds: number };
+
+export type ResetGuide = {
+  id: string;
+  title: string;
+  lede: string;
+  loop: boolean;
+  steps: ResetStep[];
+  after: string;
+};
+
+export const RESET_GUIDES: ResetGuide[] = [
+  {
+    id: 'anxious',
+    title: 'When you feel anxious',
+    lede: 'Anxiety runs on the future. This drags attention back to the room you are actually in, one sense at a time. Say the answers out loud if you can.',
+    loop: false,
+    steps: [
+      { label: 'Five things you can see', note: 'Ordinary ones. The door, your hands.', seconds: 40 },
+      { label: 'Four things you can feel', note: 'The chair, the floor, fabric, temperature.', seconds: 35 },
+      { label: 'Three things you can hear', note: 'Including the quiet ones underneath.', seconds: 30 },
+      { label: 'Two things you can smell', note: 'Or two you like the smell of.', seconds: 25 },
+      { label: 'One slow breath', note: 'All the way out. Longer than you think.', seconds: 20 },
+    ],
+    after: 'If it has not shifted, run it again. It works by repetition, not insight.',
+  },
+  {
+    id: 'breath',
+    title: 'When breathing feels hard',
+    lede: 'A long out-breath is the one lever you have on your own nervous system. Follow the ring — in for four, hold for four, out for six. Stop whenever you like.',
+    loop: true,
+    steps: [
+      { label: 'Breathe in', note: 'Through the nose, into the belly.', seconds: 4 },
+      { label: 'Hold', seconds: 4 },
+      { label: 'Breathe out', note: 'Slowly, through the mouth.', seconds: 6 },
+      { label: 'Rest', seconds: 2 },
+    ],
+    after: 'Six or seven rounds is usually enough. Light-headed means you are pulling too hard — go shallower.',
+  },
+];
+
 export const RECOMMENDED_TASKS: Task[] = [
   t('rec1', 'Take your\nmedication', 'pill', 'pill', 1),
   t('rec2', 'Read ten\npages', 'book', 'book', 10),
+];
+
+/**
+ * The icon set offered when someone writes their own task.
+ *
+ * Icon and tone travel together — the hue is part of what the glyph means, and
+ * letting the two be chosen separately produces a blue dumbbell. Ordered by how
+ * often a morning or evening routine reaches for them.
+ */
+export const TASK_PALETTE: { icon: IconName; tone: TaskTone }[] = [
+  { icon: 'check', tone: 'target' },
+  { icon: 'bottle', tone: 'water' },
+  { icon: 'cup', tone: 'cup' },
+  { icon: 'leaf', tone: 'leaf' },
+  { icon: 'dumbbell', tone: 'dumbbell' },
+  { icon: 'bed', tone: 'bed' },
+  { icon: 'drop', tone: 'drop' },
+  { icon: 'pill', tone: 'pill' },
+  { icon: 'book', tone: 'book' },
+  { icon: 'pencil', tone: 'pencil' },
+  { icon: 'target', tone: 'target' },
+  { icon: 'heart', tone: 'heart' },
+  { icon: 'screen', tone: 'screen' },
+  { icon: 'cal', tone: 'cal' },
+  { icon: 'sun', tone: 'sun' },
+  { icon: 'moon', tone: 'moon' },
+  { icon: 'mail', tone: 'cal' },
+  { icon: 'flask', tone: 'pencil' },
 ];
 
 export const PICKER_TASKS: Task[] = [
@@ -388,118 +330,6 @@ export const PICKER_TASKS: Task[] = [
   t('p5', 'Medication', 'pill', 'pill', 1),
   t('p6', 'Brain dump', 'pencil', 'pencil', 6),
 ];
-
-/* ── social ───────────────────────────────────────────────────────── */
-
-export type Friend = {
-  id: string;
-  name: string;
-  status: string;
-  avatarBg: string;
-  avatarFg: string;
-  /** Index into the accent ramp — the friend's streak tier. */
-  tierStep?: number;
-  running?: boolean;
-  quiet?: boolean;
-  bookmarked?: boolean;
-};
-
-export const FRIENDS: Friend[] = [
-  {
-    id: 'meera',
-    name: 'Meera',
-    status: 'Running Morning routine now',
-    avatarBg: IDENTITY.avatarSage,
-    avatarFg: IDENTITY.avatarSandInk,
-    tierStep: 3,
-    running: true,
-  },
-  {
-    id: 'daran',
-    name: 'Daran',
-    status: 'Finished 2h ago · 31 days',
-    avatarBg: IDENTITY.avatarSand,
-    avatarFg: IDENTITY.avatarSandInk,
-    tierStep: 4,
-    bookmarked: true,
-  },
-  {
-    id: 'althea',
-    name: 'Althea',
-    status: 'Finished 5h ago · 6 days',
-    avatarBg: IDENTITY.avatarMoss,
-    avatarFg: IDENTITY.avatarMossInk,
-    tierStep: 1,
-  },
-  {
-    id: 'rue',
-    name: 'Rue',
-    status: 'Quiet for 3 days',
-    avatarBg: IDENTITY.avatarIris,
-    avatarFg: IDENTITY.avatarIrisInk,
-    quiet: true,
-  },
-];
-
-export type FeedPost = {
-  id: string;
-  friendId: string;
-  name: string;
-  ago: string;
-  avatarBg: string;
-  avatarFg: string;
-  tierStep: number;
-  routines: string[];
-  duration: string;
-  window: string;
-  tasks: { title: string; icon: IconName; color: string; len: string }[];
-  more: number;
-};
-
-export const FEED: FeedPost[] = [
-  {
-    id: 'f1',
-    friendId: 'daran',
-    name: 'Daran',
-    ago: '2h ago',
-    avatarBg: IDENTITY.avatarSand,
-    avatarFg: IDENTITY.avatarSandInk,
-    tierStep: 4,
-    routines: ['Morning routine', 'Night routine'],
-    duration: '11m 30s',
-    window: '9:00am – 9:11am',
-    tasks: [
-      { title: 'Play something instrumental', icon: 'leaf', color: TASK_ICON_FG.leaf, len: '30s' },
-      { title: 'Make the bed', icon: 'bed', color: TASK_ICON_FG.bed, len: '1m' },
-      { title: 'Cold shower', icon: 'drop', color: TASK_ICON_FG.drop, len: '1m' },
-      { title: 'Three lines in the journal', icon: 'pencil', color: TASK_ICON_FG.pencil, len: '2m' },
-    ],
-    more: 3,
-  },
-  {
-    id: 'f2',
-    friendId: 'althea',
-    name: 'Althea',
-    ago: '5h ago',
-    avatarBg: IDENTITY.avatarMoss,
-    avatarFg: IDENTITY.avatarMossInk,
-    tierStep: 1,
-    routines: ['Evening reset'],
-    duration: '18m 04s',
-    window: '8:40pm – 8:58pm',
-    tasks: [
-      { title: 'Tea before bed', icon: 'cup', color: TASK_ICON_FG.cup, len: '5m' },
-      { title: 'Screens off', icon: 'screen', color: TASK_ICON_FG.pencil, len: '2m' },
-      { title: 'Read ten pages', icon: 'book', color: TASK_ICON_FG.book, len: '10m' },
-    ],
-    more: 1,
-  },
-];
-
-export const STORY = {
-  kicker: 'USER STORY · DINA',
-  title: 'How a marketer with two jobs protects her mornings',
-};
 
 /* ── guide ────────────────────────────────────────────────────────── */
 
@@ -708,7 +538,15 @@ export function mmss(seconds: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/**
+ * The momentum tier a streak sits in.
+ *
+ * Clamped at both ends. A streak of 0 used to fall through the `find` and land
+ * on the *last* tier, so a brand-new account drew its rail as "0 · 1 · 🏆 · 22 ·
+ * 23" — the milestones for someone three weeks in.
+ */
 export function tierFor(streak: number) {
+  if (streak < MOMENTUM_TIERS[0].from) return MOMENTUM_TIERS[0];
   return (
     MOMENTUM_TIERS.find((x) => streak >= x.from && streak <= x.to) ??
     MOMENTUM_TIERS[MOMENTUM_TIERS.length - 1]

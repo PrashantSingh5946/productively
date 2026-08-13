@@ -1,12 +1,12 @@
 /** 5.1 Explore — rescue cards, single tasks to bolt on, routine templates. */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Overline, Row, T, Tap, cardSkin } from '../../src/ui';
+import { Grad, Overline, Row, Sheet, T, Tap, cardSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
 import { C, DOCK_CLEARANCE, G, IDENTITY, TASK_TONES } from '../../src/theme';
-import { RECOMMENDED_TASKS, RESET_CARDS, TEMPLATES, Template } from '../../src/data';
+import { RECOMMENDED_TASKS, RESET_CARDS, TEMPLATES, Task, Template } from '../../src/data';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
@@ -19,8 +19,19 @@ export default function Explore() {
   const [cat, setCat] = useState<Template['category']>('Morning');
   const [chips, setChips] = useState(['Timer guide', 'Routine tips']);
   const [added, setAdded] = useState<string[]>([]);
+  /** The recommended task waiting for the user to say which routine. */
+  const [pending, setPending] = useState<Task | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const list = TEMPLATES.filter((t) => t.category === cat);
+
+  // The confirmation clears itself; the alternative is a banner that sits
+  // there until the next unrelated tap moves it.
+  useEffect(() => {
+    if (!toast) return;
+    const id = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(id);
+  }, [toast]);
 
   return (
     <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top }}>
@@ -28,20 +39,19 @@ export default function Explore() {
         contentContainerStyle={{ paddingLeft: 20, paddingBottom: DOCK_CLEARANCE }}
         showsVerticalScrollIndicator={false}
       >
-        <Row style={{ justifyContent: 'space-between', paddingTop: 12, paddingRight: 20 }}>
-          <View>
-            <Overline>Library</Overline>
-            <T d size={30} weight={800} style={{ marginTop: 4 }}>
-              Explore
-            </T>
-          </View>
-          <View style={PICKS()}>
-            <T size={14} weight={700}>
-              Picks
-            </T>
-            <Icon name="spark" size={15} color={C.accentDeep} />
-          </View>
-        </Row>
+        {/*
+          The board draws a "Picks ✦" pill here — personalised suggestions, the
+          one thing on this screen that would need a model behind it. It shipped
+          as a control with no handler, which reads as broken rather than
+          unfinished, so it is gone until there is something to open. See
+          `docs/v2-audit.md` → "AI-assisted picks".
+        */}
+        <View style={{ paddingTop: 12, paddingRight: 20 }}>
+          <Overline>Library</Overline>
+          <T d size={30} weight={800} style={{ marginTop: 4 }}>
+            Explore
+          </T>
+        </View>
 
         {chips.length ? (
           <Row gap={10} style={{ marginTop: 18, paddingRight: 20 }}>
@@ -77,7 +87,7 @@ export default function Explore() {
           style={{ marginTop: 18 }}
         >
           {RESET_CARDS.map((r) => (
-            <Tap key={r.id} onPress={() => router.push('/guide')}>
+            <Tap key={r.id} onPress={() => router.push(`/reset/${r.id}`)}>
               <View style={[RESET, { backgroundColor: C.reset[r.tone].bg }]}>
                 <View style={{ flex: 1 }}>
                   <View style={[TAG, { backgroundColor: C.reset[r.tone].tag }]}>
@@ -111,11 +121,11 @@ export default function Explore() {
             return (
               <Tap
                 key={t.id}
-                onPress={() => {
-                  if (on) return;
-                  addTasksToRoutine(state.routines[0].id, [t]);
-                  setAdded((a) => [...a, t.id]);
-                }}
+                // This used to add straight to `routines[0]` and say nothing —
+                // on an account with three routines it silently picked one, and
+                // on an account with none it was a no-op. Both read as a dead
+                // button. Ask, then confirm.
+                onPress={() => setPending(t)}
               >
                 <Grad colors={G.card} style={[REC, cardSkin()]}>
                   <View style={REC_ICON()}>
@@ -209,20 +219,88 @@ export default function Explore() {
           </Row>
         </Tap>
       </ScrollView>
+
+      {toast ? (
+        <View style={TOAST_WRAP(insets.bottom)} pointerEvents="none">
+          <Grad colors={G.ink} diag style={TOAST}>
+            <Icon name="check" size={17} color={C.onInk} />
+            <T size={14.5} weight={700} color={C.onInk}>
+              {toast}
+            </T>
+          </Grad>
+        </View>
+      ) : null}
+
+      <Sheet visible={!!pending} onClose={() => setPending(null)}>
+        <T d size={22} weight={800}>
+          Add to which routine?
+        </T>
+        <T size={14} lh={21} color={C.muted} style={{ marginTop: 8 }}>
+          {pending ? `${pending.title.replace(/\n/g, ' ')} · ${pending.minutes}m` : ''}
+        </T>
+
+        <View style={{ gap: 11, marginTop: 20 }}>
+          {state.routines.length === 0 ? (
+            <T size={14.5} lh={22} color={C.muted}>
+              You have no routines yet. Start one from a template below, and
+              this will have somewhere to go.
+            </T>
+          ) : null}
+
+          {state.routines.map((r) => (
+            <Tap
+              key={r.id}
+              onPress={() => {
+                if (!pending) return;
+                addTasksToRoutine(r.id, [pending]);
+                setAdded((a) => (a.includes(pending.id) ? a : [...a, pending.id]));
+                setToast(`Added to ${r.name}`);
+                setPending(null);
+              }}
+            >
+              <Grad colors={G.card} style={[ROUTINE_PICK, cardSkin()]}>
+                <Icon name="rows" size={20} color={C.textMid} />
+                <T size={16} weight={700} style={{ flex: 1 }}>
+                  {r.name}
+                </T>
+                <T size={13} weight={500} color={C.muted}>
+                  {r.tasks.length} tasks
+                </T>
+              </Grad>
+            </Tap>
+          ))}
+        </View>
+      </Sheet>
     </View>
   );
 }
 
-const PICKS = () => ({
+const ROUTINE_PICK = {
   flexDirection: 'row' as const,
   alignItems: 'center' as const,
-  gap: 7,
-  paddingVertical: 10,
+  gap: 14,
+  paddingVertical: 17,
   paddingHorizontal: 18,
-  borderRadius: 999,
-  borderWidth: 1.5,
-  borderColor: C.border,
+  borderRadius: 18,
+};
+
+/** Above the dock, not over it — the dock is the one thing always on screen. */
+const TOAST_WRAP = (bottom: number) => ({
+  position: 'absolute' as const,
+  left: 0,
+  right: 0,
+  bottom: bottom + 128,
+  alignItems: 'center' as const,
 });
+
+const TOAST = {
+  flexDirection: 'row' as const,
+  alignItems: 'center' as const,
+  gap: 9,
+  paddingVertical: 13,
+  paddingHorizontal: 20,
+  borderRadius: 999,
+};
 
 const BLUE_CHIP = () => ({
   paddingVertical: 12,

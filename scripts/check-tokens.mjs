@@ -15,7 +15,12 @@ import { globSync } from 'node:fs';
 const ALLOW_HEX = new Set(['src/tokens.ts']);
 const TOKEN_REF = /\b(?:C|G|SHADOW|TASK_TONES)\.\w+/;
 
-const files = globSync('{app,src}/**/*.{ts,tsx}').sort();
+// globSync hands back native separators, so on Windows every path arrived as
+// `src\tokens.ts` and missed the allow-list — the token layer reported itself
+// as 106 violations.
+const files = globSync('{app,src}/**/*.{ts,tsx}')
+  .map((f) => f.split('\\').join('/'))
+  .sort();
 const problems = [];
 
 for (const file of files) {

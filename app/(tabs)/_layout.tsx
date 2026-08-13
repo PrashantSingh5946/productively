@@ -11,10 +11,15 @@ import { Icon, IconName } from '../../src/icons';
 import { C, G, SHADOW } from '../../src/theme';
 import { useT } from '../../src/theming';
 
+/**
+ * Four tabs, not the board's five. Social was a feed, a friends list and a
+ * nudge button over constants — there is no account system and no server here,
+ * so it could never have become real. A dock with a working tab in every slot
+ * beats one that reserves a fifth of the app for a mock-up.
+ */
 const ORDER: { name: string; icon: IconName; label: string }[] = [
   { name: 'home', icon: 'playc', label: 'Home' },
   { name: 'explore', icon: 'search', label: 'Explore' },
-  { name: 'social', icon: 'people', label: 'Social' },
   { name: 'analysis', icon: 'chart', label: 'Stats' },
   { name: 'profile', icon: 'user', label: 'Profile' },
 ];

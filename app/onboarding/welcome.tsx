@@ -1,10 +1,18 @@
-/** 1.2 Welcome / sign in. */
+/**
+ * 1.2 Welcome.
+ *
+ * The board draws "Sign up in 10 seconds", "Start without an account" and
+ * "Already with us? Sign in". There is no account: no backend, no server, and
+ * backup is an export file you carry yourself. All three buttons called the
+ * same function and went to the same screen — three doors into one room.
+ * What is left is the only real choice on this screen: start fresh, or bring a
+ * phone's worth of history with you.
+ */
 import React from 'react';
-import { View } from 'react-native';
+import { Image, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Button, Grad, Spacer, T, Tap } from '../../src/ui';
-import { Icon } from '../../src/icons';
+import { Button, Grad, Spacer, T } from '../../src/ui';
 import { C, G, SHADOW } from '../../src/theme';
 
 import { useT } from '../../src/theming';
@@ -14,67 +22,72 @@ export default function Welcome() {
   const go = () => router.push('/onboarding/carousel');
 
   return (
-    <Grad
-      colors={G.welcome}
-      style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}
-    >
-      {/* Lifestyle hero placeholder — the board leaves the photo slot drawn. */}
-      <View style={{ ...StyleAbsolute, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-        <Icon name="img" size={46} color={C.faint} />
-        <T size={12} weight={500} color={C.faint}>
-          Lifestyle hero photo
-        </T>
-      </View>
+    // The safe-area insets live on the inner view, not here: an absolutely
+    // positioned child is laid out inside the padding box, so padding on this
+    // container left a bare strip of gradient along the bottom edge under the
+    // navigation bar. The photo has to bleed past both insets.
+    <Grad colors={G.welcome} style={{ flex: 1 }}>
+      {/*
+        The hero the board leaves as an empty photo slot. It sits over
+        `G.welcome` rather than replacing it, so the warm gradient still tints
+        the room and the screen stays on-palette if the asset is ever swapped.
+        841×1870 is 1:2.22 — the same shape as the device — so `cover` crops
+        nothing that matters.
+      */}
+      <Image
+        source={require('../../assets/main-hero-bg.png')}
+        // Width/height are explicit: an `Image` with a `require`d source takes
+        // its intrinsic size (841×1870 *dp*) and ignores `right`/`bottom`, so
+        // absolute-fill alone rendered the top-left corner at 1:1 and cropped
+        // the mug and the bed clean off the screen.
+        style={[StyleAbsolute, { width: '100%', height: '100%' }]}
+        resizeMode="cover"
+      />
 
-      <T
-        d
-        size={40}
-        weight={800}
-        lh={46}
-        center
-        ls={-0.4}
-        style={{ marginTop: 64, marginHorizontal: 34 }}
-      >
-        {'Switch on\nyour day'}
-      </T>
-
-      <Spacer />
-
-      <View style={{ paddingHorizontal: 22, paddingBottom: 26, gap: 12 }}>
-        <View
-          style={{
-            alignSelf: 'center',
-            marginBottom: -24,
-            zIndex: 1,
-            paddingVertical: 9,
-            paddingHorizontal: 18,
-            borderRadius: 999,
-            backgroundColor: C.accentWash,
-            borderWidth: 1.5,
-            borderColor: C.accentTintBorder,
-            boxShadow: SHADOW.row,
-          }}
+      <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
+        <T
+          d
+          size={40}
+          weight={800}
+          lh={46}
+          center
+          ls={-0.4}
+          style={{ marginTop: 64, marginHorizontal: 34 }}
         >
-          <T size={13} weight={700} color={C.accentInk}>
-            Keeps your data safe
-          </T>
+          {'Switch on\nyour day'}
+        </T>
+
+        <Spacer />
+
+        <View style={{ paddingHorizontal: 22, paddingBottom: 26, gap: 12 }}>
+          <View
+            style={{
+              alignSelf: 'center',
+              marginBottom: -24,
+              zIndex: 1,
+              paddingVertical: 9,
+              paddingHorizontal: 18,
+              borderRadius: 999,
+              backgroundColor: C.accentWash,
+              borderWidth: 1.5,
+              borderColor: C.accentTintBorder,
+              boxShadow: SHADOW.row,
+            }}
+          >
+            <T size={13} weight={700} color={C.accentInk}>
+              Everything stays on this phone
+            </T>
+          </View>
+
+          <Button label="Get started" kind="accent" onPress={go} />
+
+          {/* Coming from an old phone: skip the whole setup and pull it back. */}
+          <Button
+            label="Import a backup"
+            kind="ghost"
+            onPress={() => router.push('/settings/backup')}
+          />
         </View>
-
-        <Button label="Sign up in 10 seconds" kind="accent" onPress={go} />
-        <Button label="Start without an account" kind="ghost" onPress={go} />
-
-        <Tap onPress={go}>
-          <T size={14} center color={C.textSoft} style={{ paddingTop: 6 }}>
-            Already with us? <T size={14} weight={700} color={C.ink}>Sign in</T>
-          </T>
-        </Tap>
-
-        {/* Coming from an old phone: skip the whole setup and pull it back. */}
-        <Tap onPress={() => router.push('/settings/backup')}>
-          <T size={14} center weight={600} color={C.textSoft} style={{ paddingTop: 2 }}>
-            Restore from a backup
-          </T>
-        </Tap>
       </View>
     </Grad>
   );

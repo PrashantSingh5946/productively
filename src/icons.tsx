@@ -15,7 +15,8 @@ export type IconName =
   | 'flame' | 'leaf' | 'ring' | 'sun' | 'moon' | 'drop' | 'bottle' | 'bed'
   | 'heart' | 'book' | 'cup' | 'screen' | 'pencil' | 'dumbbell' | 'pill'
   | 'target' | 'list' | 'rows' | 'img' | 'shield' | 'mail' | 'logo'
-  | 'cloud' | 'cloudUp' | 'cloudDown' | 'download' | 'trash' | 'refresh';
+  | 'cloud' | 'cloudUp' | 'cloudDown' | 'download' | 'trash' | 'refresh'
+  | 'dots';
 
 type Props = { name: IconName; size?: number; color?: string; opacity?: number };
 
@@ -437,6 +438,15 @@ function body(name: IconName, c: string): React.ReactNode {
         <G stroke={c} {...S(1.9)}>
           <Path d="M20 12a8 8 0 1 1-2.6-5.9" />
           <Path d="M20 4v4.4h-4.4" />
+        </G>
+      );
+    // Filled rather than stroked: at 18px three hollow rings turn to mush.
+    case 'dots':
+      return (
+        <G fill={c}>
+          <Circle cx="5.2" cy="12" r="1.75" />
+          <Circle cx="12" cy="12" r="1.75" />
+          <Circle cx="18.8" cy="12" r="1.75" />
         </G>
       );
     case 'logo':

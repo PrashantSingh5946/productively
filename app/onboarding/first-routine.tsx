@@ -1,6 +1,10 @@
 /**
  * 1.11 First routine prepared. Tasks are editable here — the coach mark says
  * "reorder or remove anything that doesn't fit", so they actually do.
+ *
+ * No longer part of the onboarding flow: 1.10 finishes and goes straight to
+ * Home (see the note there). Kept because it is a board screen and still works
+ * end to end, so reinstating it is a one-line change to `streak.tsx`.
  */
 import React, { useMemo, useState } from 'react';
 import { View } from 'react-native';
@@ -17,8 +21,20 @@ import { useT } from '../../src/theming';
 export default function FirstRoutine() {
   useT();
   const insets = useSafeAreaInsets();
-  const { state, set } = useStore();
-  const [tasks, setTasks] = useState<Task[]>(FIRST_ROUTINE_TASKS);
+  const { state, finishOnboarding } = useStore();
+
+  /**
+   * The routine this screen is actually editing: whichever one will run
+   * earliest once onboarding finishes. With the sample account seeded that is a
+   * real routine, so the rows you reorder are the rows you will wake up to. On
+   * a clean build there is nothing yet and the board's template stands in — and
+   * `finish` creates it for real.
+   */
+  const existing = useMemo(
+    () => state.routines.slice().sort((a, b) => a.start - b.start)[0],
+    [state.routines]
+  );
+  const [tasks, setTasks] = useState<Task[]>(existing?.tasks ?? FIRST_ROUTINE_TASKS);
   const [sel, setSel] = useState<string | null>(null);
   const [tip, setTip] = useState(true);
 
@@ -35,12 +51,11 @@ export default function FirstRoutine() {
       return next;
     });
 
+  // Passing `tasks` is what makes the coach mark's "reorder or remove anything
+  // that doesn't fit" true — the edits used to live in local state and be
+  // thrown away on Done.
   const finish = () => {
-    set((d) => {
-      d.onboarded = true;
-      const morning = d.routines.find((r) => r.id === 'morning');
-      if (morning) morning.start = start;
-    });
+    finishOnboarding(tasks);
     router.replace('/(tabs)/home');
   };
 
