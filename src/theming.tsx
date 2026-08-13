@@ -9,9 +9,9 @@ import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { useColorScheme } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
 import { C, applyPalette } from './theme';
-import type { AccentKey, Mode } from './tokens';
+import type { Accent, Mode } from './tokens';
 
-type ThemeInfo = { key: string; mode: Mode; accent: AccentKey };
+type ThemeInfo = { key: string; mode: Mode; accent: Accent };
 
 const ThemeCtx = createContext<ThemeInfo>({ key: 'ember:light', mode: 'light', accent: 'ember' });
 
@@ -27,7 +27,7 @@ export function ThemeProvider({
   pref,
   children,
 }: {
-  accent: AccentKey;
+  accent: Accent;
   pref: ThemePref;
   children: React.ReactNode;
 }) {

@@ -136,6 +136,30 @@ export const ACCENT_KEYS = Object.keys(ACCENTS) as AccentKey[];
 export const isAccentKey = (v: unknown): v is AccentKey =>
   typeof v === 'string' && (ACCENT_KEYS as string[]).includes(v);
 
+/**
+ * An accent is either one of the four presets or a colour the user mixed on
+ * the wheel, carried as its own `#RRGGBB`.
+ *
+ * Storing the hex rather than an index into a saved-themes array is what keeps
+ * a custom accent working after the theme it came from is deleted, and what
+ * lets `buildPalette` stay a pure function of (colour, mode) — every one of the
+ * forty-odd accent tokens is derived from the base by `deriveAccent`, so a
+ * mixed colour is not a special case anywhere below this line.
+ */
+export type Accent = AccentKey | string;
+
+const HEX6 = /^#[0-9a-fA-F]{6}$/;
+
+/** Is this a colour we can build a palette from — a preset key or a hex? */
+export const isAccent = (v: unknown): v is Accent =>
+  isAccentKey(v) || (typeof v === 'string' && HEX6.test(v));
+
+/** The base colour behind an accent, whichever of the two forms it takes. */
+export const accentBase = (a: Accent) => (isAccentKey(a) ? ACCENTS[a].base : a.toUpperCase());
+
+/** Preset label, or the hex itself for a mixed colour. */
+export const accentLabel = (a: Accent) => (isAccentKey(a) ? ACCENTS[a].label : a.toUpperCase());
+
 /** Ember's family, verbatim from the board. Every other preset is a remap of it. */
 const REF = {
   base: ACCENTS.ember.base,
@@ -366,10 +390,10 @@ function resetTone(hue: string, mode: Mode, card: string) {
 
 export type Palette = ReturnType<typeof buildPalette>;
 
-export function buildPalette(accentKey: AccentKey, mode: Mode) {
+export function buildPalette(accentKey: Accent, mode: Mode) {
   const n = mode === 'light' ? LIGHT_NEUTRALS : DARK_NEUTRALS;
   const s = SEMANTIC[mode];
-  const a = deriveAccent(ACCENTS[accentKey].base, mode, n.card);
+  const a = deriveAccent(accentBase(accentKey), mode, n.card);
   // The board's #3C72C8 on #E9F0FB lands at 4.13:1; nudge it until info chips
   // clear AA. Hue is untouched, so the chip still reads as the same cool blue.
   const infoBgFlat = s.infoBg.startsWith('rgba') ? over(SEMANTIC.light.info, 0.18, n.card) : s.infoBg;
@@ -547,10 +571,49 @@ export const IDENTITY = {
 export const TASK_ICON_FG = TASK_FG;
 
 /** Convenience for the picker's swatches — no palette build needed. */
-export const accentSwatch = (k: AccentKey) => {
-  const b = toHsl(ACCENTS[k].base);
+export const accentSwatch = (k: Accent) => {
+  const b = toHsl(accentBase(k));
   return {
     from: toHex({ ...b, l: clamp(b.l + 0.06) }),
     to: toHex({ ...b, l: clamp(b.l - 0.09) }),
   };
 };
+
+/* ── colour wheel ─────────────────────────────────────────────────── */
+
+/**
+ * `count` evenly spaced hues at the wheel's fixed saturation and lightness.
+ *
+ * The board draws the ring as a CSS `conic-gradient`, which React Native has
+ * no equivalent for. These stops feed an SVG arc per segment instead, which is
+ * why the count is a parameter: it trades file size against banding.
+ */
+export const wheelHues = (count: number, s = 0.72, l = 0.6) =>
+  Array.from({ length: count }, (_, i) => toHex({ h: (i * 360) / count, s, l }));
+
+/**
+ * The lightness ramp under the wheel, light on the left running to dark on the
+ * right — the board's direction, and the one the rail's `1 - x/width` mapping
+ * assumes. Reversing this without reversing that puts the knob on a stop whose
+ * colour it does not match.
+ */
+export const lightnessRamp = (hex: string, count: number) => {
+  const b = toHsl(hex);
+  return Array.from({ length: count }, (_, i) => toHex({ ...b, l: 1 - i / (count - 1) }));
+};
+
+/**
+ * R/G/B as the 0–255 bytes people expect to read, not the 0–1 floats the
+ * internal colour maths runs on — `hexToRgb` normalises, so printing its
+ * output directly gives "R 0 G 1 B 1" for every colour.
+ */
+export const rgbOf = (hex: string) => {
+  const { r, g, b } = hexToRgb(hex);
+  return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+};
+
+/** Hue + lightness back out of a hex, for seeding the wheel from a saved theme. */
+export const hslOf = (hex: string) => toHsl(hex);
+
+/** A wheel position (hue 0–360, lightness 0–1) as a hex at wheel saturation. */
+export const wheelHex = (h: number, l: number, s = 0.72) => toHex({ h, s, l });

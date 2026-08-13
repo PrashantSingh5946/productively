@@ -8,7 +8,7 @@
  * archive, where it goes, and how to get it out or destroy it.
  */
 import React, { useMemo } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { Alert, Linking, ScrollView, Share, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Grad, Group, Row, RowItem, Spacer, T, Tap, TopBar } from '../../src/ui';
@@ -46,7 +46,9 @@ export default function Account() {
           style: 'destructive',
           onPress: () => {
             reset();
-            router.replace('/onboarding/welcome');
+            // There is no onboarding to land on any more. A wiped account goes
+            // to an empty Today, which is the same place a fresh install goes.
+            router.replace('/(tabs)/home');
           },
         },
       ]
@@ -117,6 +119,39 @@ export default function Account() {
             label="Import a backup"
             chevron
             onPress={() => router.push('/settings/backup')}
+          />
+        </Group>
+
+        {/* v3 takes Rate us, Contact us and the FAQs off Profile — they were
+            four rows of housekeeping above the things people came to change.
+            They keep working; they just live down here now. */}
+        <Group title="Help & about" style={{ marginTop: 12 }}>
+          <RowItem icon="help" label="FAQs" chevron onPress={() => router.push('/guide')} />
+          <RowItem
+            icon="headset"
+            label="Contact us"
+            chevron
+            onPress={() => router.push('/contact')}
+          />
+          <RowItem icon="flask" label="Labs" chevron onPress={() => router.push('/labs')} />
+          <RowItem
+            icon="star"
+            label="Rate us"
+            external
+            onPress={() =>
+              Linking.openURL('market://details?id=com.productively.app').catch(() => {})
+            }
+          />
+          <RowItem
+            icon="share"
+            label="Share with a friend"
+            external
+            onPress={() =>
+              Share.share({
+                message:
+                  'Productively — routine tracking that stays out of the way. Every feature free.',
+              }).catch(() => {})
+            }
           />
         </Group>
 

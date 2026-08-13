@@ -9,6 +9,64 @@ grouped by the day the work landed, newest first. The `version` field in
 
 ## [Unreleased]
 
+### Removed
+
+**v3, the minimal cut.** The board is `Productively v3.dc.html`. Everything
+here is surface coming off, not features being added — the app opens straight
+into Today, and the things that used to sit above it are gone.
+
+- **Onboarding.** Nine screens asking for a wake time, a sleep time, intents
+  and struggles before the app would show itself. The one thing it produced
+  that mattered — a first routine — is part of a fresh account now, seeded in
+  `freshState` rather than at the end of a flow. Without that move an unseeded
+  build would have opened on an empty Today.
+- **The splash screen.** 1.3 seconds of determinate progress bar over a single
+  AsyncStorage read; the bar was timing its own animation. `app/index.tsx` is a
+  redirect that waits for `ready` and nothing else.
+- **Explore**, and with it the template library. It was the browse surface, and
+  the "Start from a template" row in the add sheet went with it rather than be
+  left pointing at a screen with no way back.
+- **The achievements strip.** Five nodes drawing the next five days as trophies
+  for a streak the headline states in words directly above it.
+- **The countdown FAB**, which re-rendered every second on the one screen people
+  leave open, to repeat the "in 18m" already on the upcoming routine's card.
+- **The Routine / Checklist top tabs**, and the Jump-to sheet behind the grid
+  button — both were navigation between two things that are now dock tabs.
+
+### Added
+
+- **Checklist is a page.** It takes the dock slot Explore vacated, with its own
+  date line and heading. It was previously reachable only by opening Home and
+  then switching away from it.
+- **Customize** (`app/settings/customize.tsx`) replaces the Support rows on
+  Profile: appearance, accent presets, and your saved themes.
+- **Custom accents.** An accent is now either one of the four presets or a
+  `#RRGGBB` the user mixed. `buildPalette` takes a colour rather than a preset
+  key, so every one of the derived accent tokens works for a mixed colour with
+  no special case — including the contrast repair in `deriveAccent`, which is
+  why the colour you pick is not always the colour you get.
+- **The colour wheel** (`app/settings/theme-wheel.tsx`). The board draws the
+  ring as a CSS `conic-gradient`, which React Native has no equivalent for; it
+  is 72 SVG annular sectors instead. Hue and lightness stay on separate
+  controls — folding them into one is what makes a picker unusable with a
+  thumb. The preview is built from the candidate's real palette, not a picture
+  of a card.
+- **Saved themes**, kept on the state as `customThemes` with the mode they were
+  saved in, because a colour that works on paper can be muddy on ink.
+
+### Changed
+
+- **Filter and the view toggle hide behind the tune button.** They were a
+  permanent row above the first routine; they are now a thing you ask for. The
+  reveal is deliberately not persisted — a tool bar that came back three days
+  later would just be chrome again.
+- **Appearance keeps a "Match system" row.** The board draws a single "Dark
+  theme" switch, which cannot express "follow the phone" — the setting most
+  people are on. System takes precedence and the dark switch reports the
+  resolved mode while it is on.
+- **Rate us, Contact us, FAQs, Labs and Share** moved from Profile to Account &
+  data, as the board's own footnote says.
+
 ### Fixed
 
 **Controls that were drawn but not wired.** Found by using the release build,

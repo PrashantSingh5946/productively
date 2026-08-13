@@ -10,10 +10,29 @@
  *
  * Subscribing to re-renders is `useT()` in ./theming.
  */
-import { AccentKey, Mode, Palette, TaskTone, TaskTones, alpha, buildPalette } from './tokens';
+import { Accent, Mode, Palette, TaskTone, TaskTones, alpha, buildPalette } from './tokens';
 
-export { ACCENTS, ACCENT_KEYS, IDENTITY, accentSwatch, contrast, isAccentKey } from './tokens';
-export type { AccentKey, Mode, TaskTone } from './tokens';
+export {
+  ACCENTS,
+  ACCENT_KEYS,
+  IDENTITY,
+  accentBase,
+  accentLabel,
+  accentSwatch,
+  // The wheel screen builds a throwaway palette per frame to preview a colour
+  // it has not committed to — that is a read, not a theme change, so it calls
+  // the builder rather than `applyPalette`.
+  buildPalette,
+  contrast,
+  hslOf,
+  isAccent,
+  isAccentKey,
+  lightnessRamp,
+  rgbOf,
+  wheelHex,
+  wheelHues,
+} from './tokens';
+export type { Accent, AccentKey, Mode, TaskTone } from './tokens';
 
 const seed = buildPalette('ember', 'light');
 
@@ -92,10 +111,10 @@ function fillShadows(mode: Mode) {
 }
 
 /** Current accent + mode, for anything that needs to branch on them. */
-export const activeTheme: { accent: AccentKey; mode: Mode } = { accent: 'ember', mode: 'light' };
+export const activeTheme: { accent: Accent; mode: Mode } = { accent: 'ember', mode: 'light' };
 
 /** Rebuild every token in place. Cheap — called once per theme change. */
-export function applyPalette(accent: AccentKey, mode: Mode) {
+export function applyPalette(accent: Accent, mode: Mode) {
   const p = buildPalette(accent, mode);
   const { tasks, ...flat } = p;
 

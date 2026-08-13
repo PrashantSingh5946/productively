@@ -1,11 +1,19 @@
-/** 7.1 Profile — the hub for your data, support and everything else. */
+/**
+ * 3.1 Profile.
+ *
+ * v2 stacked four groups here — Your data, Support, Info & more, and a "every
+ * feature is free" banner — which put Rate us and FAQs at the same level as
+ * the things people actually come to this screen to change. v3 leads with
+ * Customize instead and moves the support rows down into Account & data, where
+ * a question about the app is next to the app's own record of you.
+ */
 import React from 'react';
-import { Linking, ScrollView, Share, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Group, IconButton, Overline, Row, RowItem, T, Tap, cardSkin } from '../../src/ui';
+import { Grad, Group, IconButton, Row, RowItem, T, Tap, cardSkin } from '../../src/ui';
 import { Icon } from '../../src/icons';
-import { C, DOCK_CLEARANCE, G, IDENTITY } from '../../src/theme';
+import { ACCENT_KEYS, C, DOCK_CLEARANCE, G, IDENTITY, accentSwatch } from '../../src/theme';
 import { bestStreak } from '../../src/analytics';
 import { useStore } from '../../src/store';
 import { APP_LABEL } from '../../src/release';
@@ -24,12 +32,9 @@ export default function Profile() {
         showsVerticalScrollIndicator={false}
       >
         <Row style={{ justifyContent: 'space-between', paddingTop: 12 }}>
-          <View>
-            <Overline>You</Overline>
-            <T d size={30} weight={800} style={{ marginTop: 4 }}>
-              Profile
-            </T>
-          </View>
+          <T d size={30} weight={800}>
+            Profile
+          </T>
           <IconButton icon="gear" onPress={() => router.push('/settings')} size={42} />
         </Row>
 
@@ -59,69 +64,56 @@ export default function Profile() {
           </Grad>
         </Tap>
 
-        <Tap onPress={() => router.push('/free')}>
-          <Grad colors={G.accentWash} diag style={FREE()}>
-            <Icon name="spark" size={22} color={C.accentInkSoft} />
-            <View style={{ flex: 1 }}>
-              <T d size={17} weight={800} lh={21}>
-                Every feature, always free
-              </T>
-              <T size={13} weight={500} color={C.accentInk} style={{ marginTop: 5 }}>
-                No plans, no ads, no locked layouts
-              </T>
-            </View>
-          </Grad>
-        </Tap>
-
-        <Group title="Your data" style={{ marginTop: 16 }}>
+        <Group title="Customize" style={{ marginTop: 16 }}>
           <RowItem
-            icon="user"
-            label="Data & storage"
+            icon="moon"
+            label="Theme"
+            value={state.settings.theme}
             chevron
-            onPress={() => router.push('/account')}
+            onPress={() => router.push('/settings/customize')}
           />
           <RowItem
-            icon="cloud"
-            label="Backup & sync"
-            value={state.settings.backup.enabled ? 'On' : 'Off'}
+            icon="drop"
+            label="Accent colour"
+            chevron
+            onPress={() => router.push('/settings/customize')}
+            right={<AccentStack />}
+          />
+          <RowItem
+            icon="logo"
+            label="App icon"
+            chevron
+            onPress={() => router.push('/settings/app-icon')}
+          />
+        </Group>
+
+        <Group title="Routine" style={{ marginTop: 12 }}>
+          <RowItem
+            icon="list"
+            label="Home screen"
+            chevron
+            onPress={() => router.push('/settings/home-screen')}
+          />
+          <RowItem
+            icon="clock"
+            label="Timer"
+            chevron
+            onPress={() => router.push('/settings/timer')}
+          />
+        </Group>
+
+        <Group title="Data" style={{ marginTop: 12 }}>
+          <RowItem
+            icon="shield"
+            label="Backup & export"
+            value={state.settings.backup.enabled ? 'Drive' : 'Local'}
             onPress={() => router.push('/settings/backup')}
           />
-        </Group>
-
-        <Group title="Support" style={{ marginTop: 12 }}>
-          <RowItem icon="help" label="FAQs" chevron onPress={() => router.push('/guide')} />
           <RowItem
-            icon="headset"
-            label="Contact us"
+            icon="user"
+            label="Account & data"
             chevron
-            onPress={() => router.push('/contact')}
-          />
-        </Group>
-
-        <Group title="Info & more" style={{ marginTop: 12 }}>
-          <RowItem
-            icon="compass"
-            label="User guide"
-            chevron
-            onPress={() => router.push('/guide')}
-          />
-          <RowItem icon="flask" label="Labs" chevron onPress={() => router.push('/labs')} />
-          <RowItem
-            icon="star"
-            label="Rate us"
-            external
-            onPress={() => Linking.openURL('market://details?id=com.productively.app').catch(() => {})}
-          />
-          <RowItem
-            icon="share"
-            label="Share with a friend"
-            external
-            onPress={() =>
-              Share.share({
-                message:
-                  'Productively — routine tracking that stays out of the way. Every feature free.',
-              }).catch(() => {})
-            }
+            onPress={() => router.push('/account')}
           />
         </Group>
 
@@ -155,14 +147,38 @@ const AVATAR = {
   justifyContent: 'center' as const,
 };
 
-const FREE = () => ({
-  marginTop: 12,
-  paddingVertical: 18,
-  paddingHorizontal: 20,
-  borderRadius: 22,
-  borderWidth: 1.5,
-  borderColor: C.accentWashBorder,
-  flexDirection: 'row' as const,
-  alignItems: 'center' as const,
-  gap: 14,
+/**
+ * The three overlapping coins on the Accent colour row.
+ *
+ * The live accent leads, so the row still reports the current choice at a
+ * glance; the two behind it are the nearest presets, there to say the row is a
+ * picker rather than a swatch. They overlap by a third, which is what stops
+ * three circles in a line from reading as a progress indicator.
+ */
+function AccentStack() {
+  const { state } = useStore();
+  const others = ACCENT_KEYS.filter((k) => k !== state.settings.accent).slice(0, 2);
+  return (
+    <Row style={{ marginRight: 10 }}>
+      {[state.settings.accent, ...others].map((a, i) => {
+        const sw = accentSwatch(a);
+        return (
+          <Grad
+            key={i}
+            colors={[sw.from, sw.to]}
+            diag
+            style={[COIN(), i > 0 && { marginLeft: -6 }]}
+          />
+        );
+      })}
+    </Row>
+  );
+}
+
+const COIN = () => ({
+  width: 18,
+  height: 18,
+  borderRadius: 9,
+  borderWidth: 2,
+  borderColor: C.card,
 });

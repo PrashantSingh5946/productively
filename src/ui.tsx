@@ -724,10 +724,13 @@ export function Toggle({
   on,
   onChange,
   small,
+  disabled,
 }: {
   on: boolean;
   onChange?: (v: boolean) => void;
   small?: boolean;
+  /** Still drawn and still reporting `on` — a switch another control owns. */
+  disabled?: boolean;
 }) {
   const t = useT();
   const w = small ? 48 : 52;
@@ -754,14 +757,16 @@ export function Toggle({
     justifyContent: on ? 'flex-end' : 'flex-start',
   };
   return (
-    <Tap onPress={() => onChange?.(!on)} hitSlop={10}>
-      {on ? (
-        <Grad colors={G.ink} diag style={shell}>
-          {knob}
-        </Grad>
-      ) : (
-        <View style={[shell, { backgroundColor: t.ring }]}>{knob}</View>
-      )}
+    <Tap onPress={() => onChange?.(!on)} hitSlop={10} disabled={disabled}>
+      <View style={disabled ? { opacity: 0.45 } : null}>
+        {on ? (
+          <Grad colors={G.ink} diag style={shell}>
+            {knob}
+          </Grad>
+        ) : (
+          <View style={[shell, { backgroundColor: t.ring }]}>{knob}</View>
+        )}
+      </View>
     </Tap>
   );
 }

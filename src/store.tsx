@@ -8,7 +8,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { setHapticsEnabled } from './haptics';
-import { AccentKey, isAccentKey } from './tokens';
+import { Accent, isAccent } from './tokens';
 import {
   BackupSettings,
   DEFAULT_BACKUP_SETTINGS,
@@ -42,8 +42,8 @@ const KEY = STATE_KEY;
 export type Settings = {
   language: string;
   theme: 'Light' | 'Dark' | 'System';
-  /** v2 accent preset — one of ACCENT_KEYS. Persisted with the account. */
-  accent: AccentKey;
+  /** A preset key or a mixed `#RRGGBB`. Persisted with the account. */
+  accent: Accent;
   appIcon: string;
   timeFormat12: boolean;
   weekStart: 'Sun' | 'Mon';
@@ -87,6 +87,20 @@ export type Profile = {
   sleep: number;
 };
 
+/**
+ * A colour the user mixed on the wheel and kept.
+ *
+ * The mode rides along with the hex because a colour that works on paper can
+ * be muddy on ink — picking "Ocean calm" restores the pair it was saved as,
+ * which is what the board's "#4EA8A0 · light" subtitle is promising.
+ */
+export type CustomTheme = {
+  id: string;
+  name: string;
+  hex: string;
+  mode: 'Light' | 'Dark';
+};
+
 export type State = {
   onboarded: boolean;
   profile: Profile;
@@ -95,7 +109,21 @@ export type State = {
   notes: NoteEntry[];
   sessions: Session[];
   savedTemplates: string[];
+  /** Saved wheel colours, newest first. Empty until the user mixes one. */
+  customThemes: CustomTheme[];
   settings: Settings;
+};
+
+/** The one routine a brand-new account starts with, at the default wake time. */
+const starterRoutine = (start: number): Routine => {
+  const id = `first-${Date.now().toString(36)}`;
+  return {
+    id,
+    name: 'Morning routine',
+    start,
+    days: [1, 2, 3, 4, 5],
+    tasks: FIRST_ROUTINE_TASKS.map((t, i) => ({ ...t, id: `${id}-${i}` })),
+  };
 };
 
 /**
@@ -105,8 +133,12 @@ export type State = {
  */
 const freshState = (): State => {
   const demo = buildDemoAccount();
+  const wake = 8 * 60;
   return {
-    onboarded: false,
+    // Nothing left to onboard. Kept on the state because restores from a v2
+    // backup carry it and `fold` writes it — dropping the field would make
+    // those payloads fail their shape check on the way in.
+    onboarded: true,
     profile: {
       name: 'Prashant',
       // The board's persona line, and it states a figure: "13 days into the
@@ -118,14 +150,19 @@ const freshState = (): State => {
       age: '30–34',
       intents: ['doing', 'schedule', 'track', 'energy'],
       struggles: [],
-      wake: 8 * 60,
+      wake,
       sleep: 22 * 60,
     },
-    routines: demo.routines,
+    // v2 handed the user their first routine at the end of onboarding. With
+    // onboarding gone, an unseeded build opened on an empty Today and a + button
+    // — the "we've prepared your first routine" promise with nothing behind it.
+    // The starter routine is part of a fresh account now, not part of a flow.
+    routines: demo.routines.length ? demo.routines : [starterRoutine(wake)],
     checklists: demo.checklists,
     notes: demo.notes,
     sessions: demo.sessions,
     savedTemplates: [],
+    customThemes: [],
     settings: defaultSettings(),
   };
 };
@@ -192,6 +229,16 @@ type Ctx = {
   addNote: (routineId: string, body: string) => void;
   toggleSaved: (templateId: string) => void;
   /**
+   * Keep a wheel colour and switch to it. Returns its id.
+   *
+   * Saving and applying are one action because they are one intent — the board
+   * calls the button "Save as my theme", and a saved theme you then have to go
+   * and select is a second step nobody asked for.
+   */
+  saveTheme: (name: string, hex: string, mode: 'Light' | 'Dark') => string;
+  /** Forget a saved theme. The accent it set survives — see CustomTheme. */
+  removeTheme: (id: string) => void;
+  /**
    * Close onboarding. Pass the reviewed task list if the user was shown one.
    * Lives here rather than in a screen because more than one screen can be the
    * last step, and whichever it is has to leave the user with a routine.
@@ -233,13 +280,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             const raw = (saved.settings ?? {}) as Partial<Settings> & { backupOn?: boolean };
             const settings = { ...s.settings, ...raw };
             // Caches written before the accent existed, or hand-edited ones.
-            if (!isAccentKey(settings.accent)) settings.accent = 'ember';
+            if (!isAccent(settings.accent)) settings.accent = 'ember';
             // `backupOn` was the pre-Drive boolean; carry it into the object.
             settings.backup = normalizeBackupSettings(raw.backup, raw.backupOn);
             return {
               ...s,
               ...saved,
               settings,
+              // Absent on every cache written before the wheel existed, and a
+              // non-array here would take out the Customize screen on launch.
+              customThemes: Array.isArray(saved.customThemes) ? saved.customThemes : [],
               profile: { ...s.profile, ...(saved.profile ?? {}) },
             };
           });
@@ -286,9 +336,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         // hydration path applies have to run here too.
         setState((s) => {
           const settings = { ...s.settings, ...(next.settings ?? {}) };
-          if (!isAccentKey(settings.accent)) settings.accent = 'ember';
+          if (!isAccent(settings.accent)) settings.accent = 'ember';
           settings.backup = normalizeBackupSettings(settings.backup);
-          return { ...s, ...next, settings, profile: { ...s.profile, ...(next.profile ?? {}) } };
+          return {
+            ...s,
+            ...next,
+            settings,
+            customThemes: Array.isArray(next.customThemes) ? next.customThemes : [],
+            profile: { ...s.profile, ...(next.profile ?? {}) },
+          };
         }),
       streakFor: (routineId) => deriveStreak(routine(routineId), state.sessions),
       finishRun: (s) =>
@@ -428,6 +484,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           d.savedTemplates = d.savedTemplates.includes(templateId)
             ? d.savedTemplates.filter((x) => x !== templateId)
             : [...d.savedTemplates, templateId];
+        }),
+      saveTheme: (name, hex, mode) => {
+        const id = uid('th');
+        set((d) => {
+          d.customThemes = [{ id, name, hex, mode }, ...d.customThemes];
+          d.settings.accent = hex;
+          d.settings.theme = mode;
+        });
+        return id;
+      },
+      removeTheme: (id) =>
+        set((d) => {
+          d.customThemes = d.customThemes.filter((t) => t.id !== id);
         }),
       /**
        * Onboarding ends by handing the user a routine, not just a flag.

@@ -1,88 +1,16 @@
 /**
- * Pieces of the Home screen: the streak rail, routine cards, the timeline
- * column and the floating timer/add stack.
+ * Pieces of the Home screen: routine cards, the timeline column and the
+ * floating add button.
  */
 import React from 'react';
 import { View } from 'react-native';
 import { Card, Grad, Row, T, Tap, rowSkin } from '../ui';
-import { Icon } from '../icons';
+import { Icon, IconName } from '../icons';
 import { C, G, RADIUS, SHADOW, TASK_TONES } from '../theme';
 import { useT } from '../theming';
-import { Routine, Session, daysLabel, fmtClock, tierFor, totalMinutes } from '../data';
+import { Routine, Session, daysLabel, fmtClock, totalMinutes } from '../data';
 import { useNow } from '../useNow';
 
-/* ── streak rail ──────────────────────────────────────────────────── */
-
-export function StreakRail({ streak, onPress }: { streak: number; onPress?: () => void }) {
-  const t = useT();
-  const tier = tierFor(streak);
-  // Today, tomorrow, the tier's trophy day, then two beyond.
-  const slots: ({ kind: 'done' | 'next' | 'far'; day: number } | { kind: 'trophy' })[] = [
-    { kind: 'done', day: streak },
-    { kind: 'next', day: streak + 1 },
-    { kind: 'trophy' },
-    { kind: 'far', day: tier.to + 1 },
-    { kind: 'far', day: tier.to + 2 },
-  ];
-
-  return (
-    <Tap onPress={onPress}>
-      <View style={[RAIL, rowSkin()]}>
-        {slots.map((s, i) => (
-          <React.Fragment key={i}>
-            {i > 0 ? <View style={{ flex: 1, height: 2, backgroundColor: C.stoneLine }} /> : null}
-            {s.kind === 'trophy' ? (
-              <View style={[NODE, { backgroundColor: t.stone }]}>
-                <Icon name="trophy" size={17} color={t.muted} />
-              </View>
-            ) : s.kind === 'done' ? (
-              <Grad colors={G.accent} diag style={NODE}>
-                <T size={14} weight={700} color={t.accentOn}>
-                  {s.day}
-                </T>
-              </Grad>
-            ) : s.kind === 'next' ? (
-              <Grad
-                colors={G.accentTint}
-                diag
-                style={[NODE, { borderWidth: 1.5, borderColor: t.accentTintBorder }]}
-              >
-                <T size={14} weight={700} color={t.accentText}>
-                  {s.day}
-                </T>
-              </Grad>
-            ) : (
-              <View style={[NODE, { backgroundColor: t.stone }]}>
-                <T size={14} weight={700} color={t.faint}>
-                  {s.day}
-                </T>
-              </View>
-            )}
-          </React.Fragment>
-        ))}
-        <Icon name="chevR" size={17} color={t.faint} />
-      </View>
-    </Tap>
-  );
-}
-
-const RAIL = {
-  flexDirection: 'row' as const,
-  alignItems: 'center' as const,
-  gap: 6,
-  marginTop: 16,
-  paddingVertical: 13,
-  paddingHorizontal: 14,
-  borderRadius: RADIUS.row,
-};
-
-const NODE = {
-  width: 34,
-  height: 34,
-  borderRadius: 17,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-};
 
 /* ── routine card ─────────────────────────────────────────────────── */
 
@@ -344,52 +272,35 @@ const TICK = () => ({
 
 const NOW_CHIP = { paddingVertical: 3, paddingHorizontal: 6, borderRadius: 5 };
 
-/* ── floating stack ───────────────────────────────────────────────── */
+/* ── floating action button ───────────────────────────────────────── */
 
-export function FabStack({
-  /** Minutes past midnight of the next routine, or undefined for no dial. */
-  targetMinutes,
-  onTimer,
-  onAdd,
+/**
+ * One accent coin, bottom right.
+ *
+ * v2 stacked a live countdown dial above it, ticking every second on the one
+ * screen the user leaves open. v3 cuts it: the same countdown already sits on
+ * the upcoming routine's card as "in 18m", where it is next to the thing it
+ * counts down to, and it does not cost a re-render per second to say so.
+ */
+export function Fab({
+  icon = 'plus',
+  onPress,
   bottom,
 }: {
-  targetMinutes?: number;
-  onTimer?: () => void;
-  onAdd: () => void;
+  icon?: IconName;
+  onPress: () => void;
   bottom: number;
 }) {
-  // Its own one-second clock, so the rest of Home is not re-rendered to tick it.
-  const now = useNow(targetMinutes === undefined ? 60_000 : 1000);
-
+  useT();
   return (
-    <View style={{ position: 'absolute', right: 20, bottom, gap: 14, alignItems: 'center' }}>
-      {targetMinutes !== undefined ? (
-        <Tap onPress={onTimer}>
-          <Grad colors={G.inkDeep} diag style={[FAB(), { gap: 1 }]}>
-            <Icon name="alarm" size={19} color={C.onInk} />
-            <T size={9} weight={700} color={C.onInk}>
-              {untilClock(targetMinutes, now)}
-            </T>
-          </Grad>
-        </Tap>
-      ) : null}
-      <Tap onPress={onAdd}>
+    <View style={{ position: 'absolute', right: 20, bottom, alignItems: 'center' }}>
+      <Tap onPress={onPress}>
         <Grad colors={G.accent} diag style={FAB()}>
-          <Icon name="plus" size={26} color={C.accentOn} />
+          <Icon name={icon} size={26} color={C.accentOn} />
         </Grad>
       </Tap>
     </View>
   );
-}
-
-/** Whole seconds until `targetMinutes`, wrapping past midnight. */
-function untilClock(targetMinutes: number, now: Date) {
-  const nowSec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-  const left = (targetMinutes * 60 - nowSec + 86400) % 86400;
-  const h = Math.floor(left / 3600);
-  const m = Math.floor((left % 3600) / 60);
-  const s = left % 60;
-  return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
 const FAB = () => ({

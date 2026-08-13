@@ -12,14 +12,15 @@ import { C, G, SHADOW } from '../../src/theme';
 import { useT } from '../../src/theming';
 
 /**
- * Four tabs, not the board's five. Social was a feed, a friends list and a
- * nudge button over constants — there is no account system and no server here,
- * so it could never have become real. A dock with a working tab in every slot
- * beats one that reserves a fifth of the app for a mock-up.
+ * v3's four tabs. Explore went with the rest of the browse surface, and the
+ * slot it freed went to Checklist — which had been a segmented tab at the top
+ * of Home, reachable only from another screen's header. A list of things you
+ * must not forget is not a sub-view of the routine list; it is the other half
+ * of the app, and now it is one tap from anywhere.
  */
 const ORDER: { name: string; icon: IconName; label: string }[] = [
-  { name: 'home', icon: 'playc', label: 'Home' },
-  { name: 'explore', icon: 'search', label: 'Explore' },
+  { name: 'home', icon: 'playc', label: 'Today' },
+  { name: 'checklist', icon: 'check', label: 'Checklist' },
   { name: 'analysis', icon: 'chart', label: 'Stats' },
   { name: 'profile', icon: 'user', label: 'Profile' },
 ];
@@ -126,6 +127,11 @@ export default function TabsLayout() {
       {ORDER.map((t) => (
         <Tabs.Screen key={t.name} name={t.name} />
       ))}
+      {/* Every file under (tabs) is a tab whether or not it is listed above, so
+          the cut screen has to be excluded by name rather than by omission.
+          `href: null` keeps the route out of the dock and out of the layout's
+          own navigation state. */}
+      <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );
 }

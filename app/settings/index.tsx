@@ -7,7 +7,7 @@ import { Grad, Group, Row, RowItem, T, Tap, Toggle, TopBar } from '../../src/ui'
 import { WheelSheet } from '../../src/components/WheelSheet';
 import { ThemeSheet } from '../../src/components/ThemeSheet';
 import { Icon } from '../../src/icons';
-import { ACCENTS, C, accentSwatch } from '../../src/theme';
+import { C, accentLabel, accentSwatch } from '../../src/theme';
 import { APP_ICONS, fmtClock } from '../../src/data';
 import { requestAlarms } from '../../src/alarms';
 import { useStore } from '../../src/store';
@@ -97,7 +97,7 @@ export default function Settings() {
           <RowItem label="Language" value={s.language} onPress={() => setField('language')} />
           <RowItem
             label="Theme"
-            value={`${ACCENTS[s.accent].label} · ${s.theme}`}
+            value={`${accentLabel(s.accent)} · ${s.theme}`}
             onPress={() => setThemeOpen(true)}
             right={
               <Grad
