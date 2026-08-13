@@ -20,6 +20,7 @@
  * Everything below reads them in that order and degrades quietly. A phone that
  * refuses notifications is not an error state, it is a phone.
  */
+import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { Routine, fmtClock } from './data';
@@ -77,6 +78,74 @@ export async function requestAlarms(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Send a tapped reminder to the routine it is about.
+ *
+ * The payload has carried `routineId` since reminders were added and nothing
+ * ever read it, so tapping one only reopened wherever you had left the app —
+ * the reminder told you to start, then made you go and find the thing.
+ *
+ * `useLastNotificationResponse` covers both cases that matter: a tap while the
+ * app is running, and a cold start where the tap *is* what launched the
+ * process. Both arrive here as the same object.
+ *
+ * @param onOpen  Navigate to a routine. Not called for an id that no longer
+ *                exists — a reminder can outlive its routine by up to a week.
+ * @param ready   Hold off until the store has hydrated, or the existence check
+ *                runs against the seed and drops a legitimate tap.
+ */
+export function useReminderTaps(onOpen: (routineId: string) => void, ready: boolean) {
+  const response = Notifications.useLastNotificationResponse();
+  // The hook keeps handing back the same response, so without this a tap would
+  // re-navigate on every render for the rest of the session.
+  const handled = useRef<string | null>(null);
+  const cb = useRef(onOpen);
+  cb.current = onOpen;
+
+  useEffect(() => {
+    if (!ready || !response) return;
+    if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+
+    const req = response.notification.request;
+    const data = req.content.data as { tag?: string; routineId?: string } | undefined;
+    // Only ours, and only if it names a routine.
+    if (data?.tag !== TAG || !data.routineId) return;
+    if (handled.current === req.identifier) return;
+
+    handled.current = req.identifier;
+    cb.current(data.routineId);
+  }, [response, ready]);
+}
+
+/**
+ * Post one reminder a few seconds out, for the routine given.
+ *
+ * A weekly reminder is otherwise untestable without waiting up to seven days,
+ * which is how the payload's `routineId` went unread for so long. Same tag and
+ * same data shape as the real thing, so tapping it exercises the real path
+ * rather than a rehearsal of it.
+ *
+ * Returns false if the OS has not granted notifications.
+ */
+export async function testReminder(r: Routine, h24?: boolean): Promise<boolean> {
+  if (!(await alarmsGranted())) return false;
+  await ensureChannel();
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: r.name,
+      body: `Test reminder · starts at ${fmtClock(r.start, h24)}`,
+      data: { tag: TAG, routineId: r.id },
+      ...(Platform.OS === 'android' ? { channelId: CHANNEL } : null),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 5,
+      ...(Platform.OS === 'android' ? { channelId: CHANNEL } : null),
+    },
+  });
+  return true;
 }
 
 /** Drop every reminder this module scheduled, leaving anything else alone. */

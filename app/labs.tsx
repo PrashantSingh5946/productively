@@ -2,14 +2,15 @@
  * Labs — reachable from Profile. The board lists the row but not the page, so
  * this holds the experiments the "where I'd go next" note calls out.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Group, Row, T, Toggle, TopBar } from '../src/ui';
+import { Grad, Group, Row, RowItem, T, Toggle, TopBar } from '../src/ui';
 import { Icon } from '../src/icons';
 import { C, G } from '../src/theme';
 import { useStore } from '../src/store';
+import { testReminder } from '../src/alarms';
 
 import { useT } from '../src/theming';
 const EXPERIMENTS = [
@@ -21,6 +22,7 @@ export default function Labs() {
   useT();
   const insets = useSafeAreaInsets();
   const { state, set } = useStore();
+  const [sent, setSent] = useState<string | undefined>();
 
   return (
     <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
@@ -59,6 +61,22 @@ export default function Labs() {
             />
           </Row>
         ))}
+      </Group>
+
+      <Group title="Reminders" style={{ marginTop: 12 }}>
+        <RowItem
+          label="Send a test reminder"
+          value={sent}
+          chevron={!sent}
+          onPress={async () => {
+            const r = state.routines[0];
+            if (!r) return setSent('No routines');
+            const ok = await testReminder(r, !state.settings.timeFormat12);
+            // Says which of the two gates stopped it, rather than failing mute:
+            // the switch in Settings is the app's intent, the grant is Android's.
+            setSent(ok ? 'In 5 seconds…' : 'Notifications blocked');
+          }}
+        />
       </Group>
 
       <Grad colors={G.accentWash} diag style={NOTE()}>

@@ -130,10 +130,18 @@ export default function Settings() {
                 Reminders
               </T>
               <T size={13} lh={18} color={C.muted} style={{ marginTop: 3 }}>
+                {/*
+                  "5 minutes before" was a promise the delivery path does not
+                  keep. These are notifications, not exact alarms — the app
+                  does not hold SCHEDULE_EXACT_ALARM, so Android is free to
+                  batch them and Doze can hold one back on an idle phone.
+                  "Around" is the honest word; a reminder that quietly lands
+                  late is worse than one that said it might.
+                */}
                 {s.alarms
                   ? s.alarmLead === 0
-                    ? 'A notification as each routine starts'
-                    : `A notification ${s.alarmLead} minutes before each routine`
+                    ? 'A notification around each routine’s start time'
+                    : `A notification around ${s.alarmLead} minutes before each routine`
                   : blocked
                     ? 'Android is blocking notifications for Productively'
                     : 'Off — nothing will interrupt you'}

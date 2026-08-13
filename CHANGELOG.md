@@ -66,8 +66,31 @@ into Today, and the things that used to sit above it are gone.
   resolved mode while it is on.
 - **Rate us, Contact us, FAQs, Labs and Share** moved from Profile to Account &
   data, as the board's own footnote says.
+- **Reminders no longer promise a precision they cannot deliver.** The settings
+  row read "A notification 5 minutes before each routine". These are
+  notifications, not exact alarms — the app does not hold
+  `SCHEDULE_EXACT_ALARM`, which Expo's own SDK 57 docs name as the requirement
+  for exact-time scheduling on Android 12+, so the OS may batch them and Doze
+  can hold one back. It says "around" now. Adding the permission is a Google
+  Play policy decision (the exact-alarm policy restricts it to apps whose core
+  function is an alarm clock or calendar) and has deliberately not been taken.
 
 ### Fixed
+
+**A tapped reminder starts its routine.** `syncAlarms` has always put the
+`routineId` in the notification payload and nothing ever read it — no response
+listener existed anywhere in the app, so the reminder told you to start and
+then dropped you wherever you had last left off, to go and find it yourself.
+`useReminderTaps` handles both a tap while the app is running and a cold start
+where the tap launched the process, and falls back to Today when the routine
+has since been deleted — a weekly reminder can outlive the routine that asked
+for it by up to seven days.
+
+**Labs can send a test reminder.** A weekly reminder is otherwise untestable
+without waiting up to seven days, which is exactly how an unread `routineId`
+survived this long. Same tag and payload as the real thing, five seconds out,
+so tapping it exercises the real path.
+
 
 **Controls that were drawn but not wired.** Found by using the release build,
 not by reading it. Each of these rendered exactly as the board draws it and did

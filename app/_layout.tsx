@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { View } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,7 +20,7 @@ import { BackupProvider } from '../src/backup/context';
 // Side-effect import: TaskManager.defineTask has to run before the OS can hand
 // us a background wake-up, and it must happen at module scope.
 import '../src/backup/task';
-import { syncAlarms } from '../src/alarms';
+import { syncAlarms, useReminderTaps } from '../src/alarms';
 import { C } from '../src/theme';
 import { ThemeProvider, useT, useThemeInfo } from '../src/theming';
 
@@ -59,6 +59,18 @@ export default function RootLayout() {
 /** Sits inside the store so the accent and theme preference can drive the tokens. */
 function Themed() {
   const { state, ready } = useStore();
+
+  /*
+    A tapped reminder starts its routine. Guarded on the routine still existing
+    rather than pushing the id straight through: reminders are scheduled a week
+    out, so one can outlive the routine it names, and `/run/<deleted id>` is a
+    dead screen. Falling back to Today is the honest failure — the thing it was
+    reminding you about is gone.
+  */
+  useReminderTaps((routineId) => {
+    const exists = state.routines.some((r) => r.id === routineId);
+    router.replace(exists ? `/run/${routineId}` : '/(tabs)/home');
+  }, ready);
 
   /*
     Reminders are rebuilt from the routines rather than kept in step by hand.
