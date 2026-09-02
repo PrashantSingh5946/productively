@@ -9,6 +9,9 @@
  */
 import React, { useMemo } from 'react';
 import { Alert, Linking, ScrollView, Share, View } from 'react-native';
+
+/** Where the app actually lives — no store listing exists yet. */
+const REPO_URL = 'https://github.com/PrashantSingh5946/productively';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Grad, Group, Row, RowItem, Spacer, T, Tap, TopBar } from '../../src/ui';
@@ -17,7 +20,7 @@ import { C, G } from '../../src/theme';
 import { useStore } from '../../src/store';
 import { useBackup } from '../../src/backup/context';
 import { summarize } from '../../src/backup/archive';
-import { agoLabel, sizeLabel } from '../../src/backup/format';
+import { agoLabel, countLabel, sizeLabel } from '../../src/backup/format';
 import { APP_LABEL } from '../../src/release';
 
 import { useT } from '../../src/theming';
@@ -79,7 +82,8 @@ export default function Account() {
               : 'No history yet'}
           </T>
           <T size={14} lh={21} color={C.onInkSoft} style={{ marginTop: 8 }}>
-            {summary.routines} routines, {summary.tasks} tasks and {summary.notes} notes.
+            {countLabel(summary.routines, 'routine')}, {countLabel(summary.tasks, 'task')} and{' '}
+            {countLabel(summary.notes, 'note')}.
             {backup.settings.enabled
               ? ' Stored on this device, copied to your Drive on a schedule.'
               : ' Stored on this device only.'}
@@ -101,8 +105,10 @@ export default function Account() {
         <Group title="This device" style={{ marginTop: 14 }}>
           <RowItem
             icon="cloud"
-            label="Back up & sync"
-            value={backup.settings.enabled ? `On · ${backedUpAgo.toLowerCase()}` : 'Off'}
+            label="Backup & export"
+            value={
+              backup.settings.enabled ? `Google Drive · ${backedUpAgo.toLowerCase()}` : 'On this device'
+            }
             chevron
             onPress={() => router.push('/settings/backup')}
           />
@@ -126,7 +132,7 @@ export default function Account() {
             four rows of housekeeping above the things people came to change.
             They keep working; they just live down here now. */}
         <Group title="Help & about" style={{ marginTop: 12 }}>
-          <RowItem icon="help" label="FAQs" chevron onPress={() => router.push('/guide')} />
+          <RowItem icon="help" label="User guide" chevron onPress={() => router.push('/guide')} />
           <RowItem
             icon="headset"
             label="Contact us"
@@ -134,13 +140,15 @@ export default function Account() {
             onPress={() => router.push('/contact')}
           />
           <RowItem icon="flask" label="Labs" chevron onPress={() => router.push('/labs')} />
+          {/* This was `market://details?id=…` — a Play Store scheme with no
+              platform branch, so on iOS it had no handler and the swallowed
+              rejection made the row a silent no-op. There is no store listing
+              yet either way; the repo is where the app actually lives. */}
           <RowItem
             icon="star"
-            label="Rate us"
+            label="Star on GitHub"
             external
-            onPress={() =>
-              Linking.openURL('market://details?id=com.productively.app').catch(() => {})
-            }
+            onPress={() => Linking.openURL(REPO_URL).catch(() => {})}
           />
           <RowItem
             icon="share"
@@ -148,8 +156,7 @@ export default function Account() {
             external
             onPress={() =>
               Share.share({
-                message:
-                  'Productively — routine tracking that stays out of the way. Every feature free.',
+                message: `Productively — routine tracking that stays out of the way. Every feature free.\n${REPO_URL}`,
               }).catch(() => {})
             }
           />

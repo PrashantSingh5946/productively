@@ -85,7 +85,11 @@ export default function RoutineDetail() {
         </T>
 
         <Row gap={8} style={{ marginTop: 16 }}>
-          <Pill label={`${streakFor(r.id)}-day streak`} tone="tint" size={12.5} />
+          {/* A zero is not an achievement — the pill only earns its place once
+              there is a streak to show. */}
+          {streakFor(r.id) > 0 ? (
+            <Pill label={`${streakFor(r.id)}-day streak`} tone="tint" size={12.5} />
+          ) : null}
           <Pill label={daysLabel(r.days)} tone="sand" size={12.5} />
         </Row>
 

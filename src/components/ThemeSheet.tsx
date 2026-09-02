@@ -32,35 +32,14 @@ const MODES: { key: ThemePref; label: string; note: string }[] = [
   { key: 'System', label: 'System', note: 'Follows your device' },
 ];
 
-/** Accent → the app-icon variant that matches it, offered but never forced. */
-const MATCHING_ICON: Record<AccentKey, string> = {
-  ember: 'default',
-  sky: 'sky',
-  moss: 'moss',
-  orchid: 'orchid',
-};
-
 export function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const t = useT();
   const { state, set } = useStore();
   const s = state.settings;
-  // Only offered once per change, and only while the icon still disagrees.
-  const [iconOffer, setIconOffer] = useState<AccentKey | null>(null);
-
   const pickAccent = (key: AccentKey) => {
     set((d) => {
       d.settings.accent = key;
     });
-    setIconOffer(state.settings.appIcon === MATCHING_ICON[key] ? null : key);
-  };
-
-  const acceptIcon = () => {
-    if (!iconOffer) return;
-    const id = MATCHING_ICON[iconOffer];
-    set((d) => {
-      d.settings.appIcon = id;
-    });
-    setIconOffer(null);
   };
 
   return (
@@ -104,30 +83,6 @@ export function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: ()
             );
           })}
         </Row>
-
-        {iconOffer ? (
-          <Row
-            gap={12}
-            style={[
-              { marginTop: 12, padding: 14, borderRadius: RADIUS.tile },
-              { backgroundColor: t.accentTintFrom },
-              tintSkin(),
-            ]}
-          >
-            <Icon name="spark" size={19} color={t.accentIcon} />
-            <T size={13} lh={18} color={t.accentText} style={{ flex: 1 }}>
-              There's a matching app icon for {ACCENTS[iconOffer].label}.
-            </T>
-            <Tap onPress={acceptIcon} hitSlop={8}>
-              <T size={13} weight={700} color={t.accentText}>
-                Use it
-              </T>
-            </Tap>
-            <Tap onPress={() => setIconOffer(null)} hitSlop={8}>
-              <Icon name="x" size={16} color={t.accentIcon} />
-            </Tap>
-          </Row>
-        ) : null}
 
         <Overline style={{ marginTop: 24 }}>Appearance</Overline>
         <View style={{ gap: 10, marginTop: 12 }}>

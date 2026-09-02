@@ -46,13 +46,20 @@ export default function Home() {
     [state.routines, filterAll, weekday]
   );
 
-  /** The next routine still due today, used for the highlight card + countdown. */
+  /**
+   * The next routine still due today, used for the highlight card + countdown.
+   *
+   * Drawn from the routines actually scheduled today, never from `todays` —
+   * that list defaults to showing every routine, so counting down from it
+   * promised "in 4h 20m" on a Saturday for a routine that only runs Mon–Fri.
+   */
   const upcoming = useMemo(() => {
-    const pending = todays
+    const pending = state.routines
+      .filter((r) => r.days.includes(weekday))
       .filter((r) => !state.sessions.some((s) => s.routineId === r.id && s.day === iso(now)))
       .sort((a, b) => a.start - b.start);
     return pending.find((r) => r.start >= nowMin) ?? pending[0];
-  }, [todays, state.sessions, nowMin, now]);
+  }, [state.routines, state.sessions, weekday, nowMin, now]);
 
   const untilNext = upcoming ? diffLabel(upcoming.start, nowMin) : undefined;
   // The headline follows whichever routine is running longest, not a fixed id.
@@ -83,20 +90,27 @@ export default function Home() {
 
         <T d size={27} weight={800} lh={34} style={{ marginTop: 6 }}>
           {view === 'list'
-            ? `${greeting(now.getHours())}, ${state.profile.name}.\n${streakLine(streak)}`
+            ? `${greeting(now.getHours())}${state.profile.name ? `, ${state.profile.name}` : ''}.\n${streakLine(streak)}`
             : 'The day, on rails.'}
         </T>
 
         {tools ? (
           <Row style={{ justifyContent: 'space-between', marginTop: 16 }}>
-            <Tap onPress={() => setFilterAll((v) => !v)}>
-              <Grad colors={G.card} style={[FILTER, rowSkin()]}>
-                <Icon name="filter" size={17} color={C.textSoft} />
-                <T size={14} weight={600} color={C.textMid}>
-                  {filterAll ? 'Filter' : 'Today only'}
-                </T>
-              </Grad>
-            </Tap>
+            {/* The timeline is today's clock by definition, so an
+                all-routines filter has nothing to mean there — showing the
+                pill in both views made the two disagree about the day. */}
+            {view === 'list' ? (
+              <Tap onPress={() => setFilterAll((v) => !v)}>
+                <Grad colors={G.card} style={[FILTER, rowSkin()]}>
+                  <Icon name="filter" size={17} color={C.textSoft} />
+                  <T size={14} weight={600} color={C.textMid}>
+                    {filterAll ? 'All routines' : 'Today only'}
+                  </T>
+                </Grad>
+              </Tap>
+            ) : (
+              <View />
+            )}
             <ViewToggle />
           </Row>
         ) : null}
@@ -107,6 +121,7 @@ export default function Home() {
             upcomingId={upcoming?.id}
             untilNext={untilNext}
             topGap={tools ? 14 : 20}
+            filtered={!filterAll && state.routines.length > 0}
           />
         ) : (
           <TimelineView nowMin={nowMin} topGap={tools ? 14 : 18} />
@@ -159,14 +174,34 @@ function ListView({
   upcomingId,
   untilNext,
   topGap,
+  filtered,
 }: {
   routines: ReturnType<typeof useStore>['state']['routines'];
   upcomingId?: string;
   untilNext?: string;
   topGap: number;
+  /** True when routines exist but today's filter hid them all. */
+  filtered: boolean;
 }) {
   const { state, completedToday } = useStore();
   const cfg = state.settings.homeList;
+
+  // An empty list used to render nothing at all, which left the screen blank
+  // below the greeting with no way to tell "rest day" from "broken".
+  if (routines.length === 0) {
+    return (
+      <View style={{ marginTop: topGap + 8 }}>
+        <T d size={19} weight={700} color={C.textMid}>
+          {filtered ? 'Nothing scheduled today.' : 'No routines yet.'}
+        </T>
+        <T size={14.5} lh={22} color={C.muted} style={{ marginTop: 8 }}>
+          {filtered
+            ? 'A rest day is part of the plan. Switch to All routines to see the rest of your week.'
+            : 'A routine is a short sequence you run at the same time each day. Tap + to build your first one.'}
+        </T>
+      </View>
+    );
+  }
 
   return (
     <View style={{ marginTop: topGap }}>

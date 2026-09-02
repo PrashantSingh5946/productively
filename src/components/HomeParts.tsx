@@ -154,12 +154,34 @@ export function Timeline({
     .sort((a, b) => a.start - b.start);
 
   const firstHour = Math.min(...scheduled.map((r) => Math.floor(r.start / 60)), 8);
-  const lastHour = Math.max(
-    ...scheduled.map((r) => Math.floor((r.start + totalMinutes(r.tasks)) / 60)),
-    Math.floor(nowMinutes / 60) + 1
+  // Clamped to 23: a routine that starts at 23:00 and runs 90 minutes used to
+  // push this to 24 and draw a literal "24:00" row, and a past-midnight one
+  // reached "25:00".
+  const lastHour = Math.min(
+    23,
+    Math.max(
+      ...scheduled.map((r) => Math.floor((r.start + totalMinutes(r.tasks)) / 60)),
+      Math.floor(nowMinutes / 60) + 1
+    )
   );
   const hours: number[] = [];
   for (let h = firstHour; h <= lastHour; h++) hours.push(h);
+
+  // With nothing scheduled the ladder was drawn anyway, so a rest day rendered
+  // as a stack of empty hour rules whose height depended on the time of day.
+  if (scheduled.length === 0) {
+    return (
+      <View style={{ marginTop: 28 }}>
+        <T d size={19} weight={700} color={t.textMid}>
+          Nothing on the clock today.
+        </T>
+        <T size={14.5} lh={22} color={t.muted} style={{ marginTop: 8 }}>
+          The timeline shows routines scheduled for today. Nothing is due, so
+          there is nothing to lay out.
+        </T>
+      </View>
+    );
+  }
 
   return (
     <View style={{ marginTop: 20 }}>
@@ -199,24 +221,55 @@ export function Timeline({
                         </T>
                       )}
                     </Grad>
+                    {/*
+                      The block lists three tasks and used to stop there in
+                      silence — a five-task routine drew three rows and nothing
+                      said so, while the list card next to it counted all five.
+                      The rest are named in a trailing row rather than dropped.
+                    */}
                     {showTasks
-                      ? r.tasks.slice(0, 3).map((task, i, arr) => (
-                          <View
-                            key={task.id}
-                            style={[
-                              BLOCK_ROW,
-                              rowSkin(),
-                              i === arr.length - 1 && {
-                                borderBottomLeftRadius: 10,
-                                borderBottomRightRadius: 10,
-                              },
-                            ]}
-                          >
-                            <T size={13} weight={600} color={t.textMid}>
-                              {task.title}
-                            </T>
-                          </View>
-                        ))
+                      ? (() => {
+                          const shown = r.tasks.slice(0, 3);
+                          const hidden = r.tasks.length - shown.length;
+                          return (
+                            <>
+                              {shown.map((task, i) => (
+                                <View
+                                  key={task.id}
+                                  style={[
+                                    BLOCK_ROW,
+                                    rowSkin(),
+                                    i === shown.length - 1 &&
+                                      hidden === 0 && {
+                                        borderBottomLeftRadius: 10,
+                                        borderBottomRightRadius: 10,
+                                      },
+                                  ]}
+                                >
+                                  <T size={13} weight={600} color={t.textMid}>
+                                    {task.title}
+                                  </T>
+                                </View>
+                              ))}
+                              {hidden > 0 ? (
+                                <View
+                                  style={[
+                                    BLOCK_ROW,
+                                    rowSkin(),
+                                    {
+                                      borderBottomLeftRadius: 10,
+                                      borderBottomRightRadius: 10,
+                                    },
+                                  ]}
+                                >
+                                  <T size={13} weight={600} color={t.muted}>
+                                    {`+${hidden} more task${hidden === 1 ? '' : 's'}`}
+                                  </T>
+                                </View>
+                              ) : null}
+                            </>
+                          );
+                        })()
                       : null}
                   </Tap>
                 </Row>

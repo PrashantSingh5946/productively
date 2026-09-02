@@ -88,13 +88,6 @@ export default function Customize() {
               />
             }
           />
-          <RowItem
-            icon="logo"
-            label="App icon"
-            value={s.appIcon === 'default' ? 'Default' : s.appIcon}
-            chevron
-            onPress={() => router.push('/settings/app-icon')}
-          />
         </Group>
 
         <View style={[CARD, cardSkin()]}>
@@ -169,9 +162,6 @@ export default function Customize() {
           />
         </Group>
 
-        <T size={12.5} lh={20} center color={C.wisp} style={{ marginTop: 16 }}>
-          {'Rate us, Contact us and FAQs are hidden for now —\nreachable from Account & data.'}
-        </T>
       </ScrollView>
     </View>
   );

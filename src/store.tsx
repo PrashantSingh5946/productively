@@ -140,15 +140,24 @@ const freshState = (): State => {
     // those payloads fail their shape check on the way in.
     onboarded: true,
     profile: {
-      name: 'Prashant',
+      // Same rule as `intro` below: the board's persona belongs to the demo,
+      // not to a stranger's fresh install. A real account was greeted as
+      // "Prashant" on Today and on Profile. v2 at least had an onboarding flow
+      // that could have asked; v3 opens straight into Today, so there is no
+      // longer any moment where the app could learn a name it was already
+      // using. Profile ▸ Edit is the one place it is set, and Profile prompts
+      // for it until it is.
+      name: DEMO_SEED ? 'Prashant' : '',
       // The board's persona line, and it states a figure: "13 days into the
       // morning routine". True of the sample account, a fabrication on a real
       // install — a fresh account claimed thirteen days it had never run. It
       // belongs to the demo, so it ships with the demo.
       intro: DEMO_SEED ? 'Building slowly. 13 days into the morning routine.' : '',
       gender: 'Prefer not to say',
-      age: '30–34',
-      intents: ['doing', 'schedule', 'track', 'energy'],
+      // Both of these are answers to questions the app no longer asks, and a
+      // fabricated answer is the same bug as a fabricated name.
+      age: DEMO_SEED ? '30–34' : '',
+      intents: DEMO_SEED ? ['doing', 'schedule', 'track', 'energy'] : [],
       struggles: [],
       wake,
       sleep: 22 * 60,
@@ -238,12 +247,6 @@ type Ctx = {
   saveTheme: (name: string, hex: string, mode: 'Light' | 'Dark') => string;
   /** Forget a saved theme. The accent it set survives — see CustomTheme. */
   removeTheme: (id: string) => void;
-  /**
-   * Close onboarding. Pass the reviewed task list if the user was shown one.
-   * Lives here rather than in a screen because more than one screen can be the
-   * last step, and whichever it is has to leave the user with a routine.
-   */
-  finishOnboarding: (reviewed?: Task[]) => void;
   reset: () => void;
 };
 
@@ -497,38 +500,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       removeTheme: (id) =>
         set((d) => {
           d.customThemes = d.customThemes.filter((t) => t.id !== id);
-        }),
-      /**
-       * Onboarding ends by handing the user a routine, not just a flag.
-       *
-       * The morning routine is whichever one runs earliest, not a fixed id —
-       * the sample account's ids are prefixed and a real one has none of these.
-       * When there is no routine at all (a build with `demoSeed` off) the first
-       * one is created here; without that, onboarding walked people through
-       * "we've prepared your first routine" and left them on an empty Home.
-       *
-       * `reviewed` is the list from 1.11 when that screen was part of the flow.
-       * Omitted, nobody edited anything, so an existing routine keeps its own
-       * tasks and the template is only used to create.
-       */
-      finishOnboarding: (reviewed) =>
-        set((d) => {
-          d.onboarded = true;
-          const start = d.profile.wake;
-          const morning = d.routines.slice().sort((a, b) => a.start - b.start)[0];
-          if (morning) {
-            morning.start = start;
-            if (reviewed) morning.tasks = reviewed.map((t) => ({ ...t }));
-            return;
-          }
-          const id = `first-${Date.now().toString(36)}`;
-          d.routines.push({
-            id,
-            name: 'Morning routine',
-            start,
-            days: [1, 2, 3, 4, 5],
-            tasks: (reviewed ?? FIRST_ROUTINE_TASKS).map((t, i) => ({ ...t, id: `${id}-${i}` })),
-          });
         }),
       reset: () => setState(freshState()),
     };

@@ -452,7 +452,6 @@ export const ARTICLES: Article[] = [
 export const CONTACT_TOPICS = [
   'Backup, sync or lost data',
   'Notifications or alarms',
-  'Wrong translation',
   'Performance or battery',
   'Something else',
 ];

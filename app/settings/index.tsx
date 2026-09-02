@@ -3,24 +3,45 @@ import React, { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Grad, Group, Row, RowItem, T, Tap, Toggle, TopBar } from '../../src/ui';
+import { Button, Dialog, Grad, Group, Row, RowItem, T, Tap, Toggle, TopBar } from '../../src/ui';
 import { WheelSheet } from '../../src/components/WheelSheet';
 import { ThemeSheet } from '../../src/components/ThemeSheet';
 import { Icon } from '../../src/icons';
 import { C, accentLabel, accentSwatch } from '../../src/theme';
-import { APP_ICONS, fmtClock } from '../../src/data';
+import { fmtClock } from '../../src/data';
 import { exactAlarmsConfigurable, openExactAlarmSettings, requestAlarms } from '../../src/alarms';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
-type Field = 'language' | 'timeFormat' | 'weekStart' | 'endDay' | 'lead' | null;
+type Field = 'timeFormat' | 'weekStart' | 'endDay' | 'lead' | null;
 
-const LANGUAGES = ['English', 'Deutsch', 'Español', 'Français', 'हिन्दी', '日本語'];
 const FORMATS = ['12h (1:00pm)', '24h (13:00)'];
 const WEEK = ['Sun', 'Mon'];
 const END_HOURS = [0, 1, 2, 3, 4, 5, 6].map((h) => fmtClock(h * 60));
 const LEADS = [0, 5, 10, 15, 30, 60];
 const leadLabel = (m: number) => (m === 0 ? 'At the start time' : `${m} min before`);
+
+/**
+ * What the "?" beside a row actually says.
+ *
+ * The icon shipped as a bare glyph with no handler on three rows — the
+ * universal "tap me and I'll explain" affordance, wired to nothing, on exactly
+ * the three settings that need explaining. These are the explanations.
+ */
+const HELP: Record<string, { title: string; body: string }> = {
+  weekStart: {
+    title: 'Start week on',
+    body: 'Which column the weekly grid begins with, and where the week boundary falls when Stats works out "this week". It does not change any routine — a routine that repeats on Monday still repeats on Monday.',
+  },
+  endDay: {
+    title: 'End day at',
+    body: 'When one day stops counting and the next begins. Set at 3:00am, a routine you finish at 1am still counts for the night before, so a late evening does not read as a missed day and a broken streak.',
+  },
+  haptics: {
+    title: 'Haptic vibration',
+    body: 'The short taps you feel when a task completes, a timer ends, or a control snaps into place. Turning this off is silent and saves a little battery; nothing else changes.',
+  },
+};
 
 export default function Settings() {
   useT();
@@ -30,9 +51,9 @@ export default function Settings() {
   const [field, setField] = useState<Field>(null);
   const [themeOpen, setThemeOpen] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const [help, setHelp] = useState<keyof typeof HELP | null>(null);
 
   const config: Record<Exclude<Field, null>, { title: string; options: string[]; value: string }> = {
-    language: { title: 'Language', options: LANGUAGES, value: s.language },
     timeFormat: { title: 'Time format', options: FORMATS, value: FORMATS[s.timeFormat12 ? 0 : 1] },
     weekStart: { title: 'Start week on', options: WEEK, value: s.weekStart },
     endDay: { title: 'End day at', options: END_HOURS, value: fmtClock(s.endDayAt) },
@@ -61,9 +82,6 @@ export default function Settings() {
   const apply = (v: string) => {
     set((d) => {
       switch (field) {
-        case 'language':
-          d.settings.language = v;
-          break;
         case 'timeFormat':
           d.settings.timeFormat12 = v === FORMATS[0];
           break;
@@ -94,7 +112,6 @@ export default function Settings() {
         </T>
 
         <Group title="System" style={{ marginTop: 22 }}>
-          <RowItem label="Language" value={s.language} onPress={() => setField('language')} />
           <RowItem
             label="Theme"
             value={`${accentLabel(s.accent)} · ${s.theme}`}
@@ -107,17 +124,12 @@ export default function Settings() {
               />
             }
           />
-          <RowItem
-            label="App icon"
-            value={iconName(s.appIcon)}
-            onPress={() => router.push('/settings/app-icon')}
-          />
         </Group>
 
         <Group title="Data" style={{ marginTop: 14 }}>
           <RowItem
-            label="Backup & sync"
-            value={s.backup.enabled ? 'On' : 'Off'}
+            label="Backup & export"
+            value={s.backup.enabled ? 'Google Drive' : 'On this device'}
             chevron
             onPress={() => router.push('/settings/backup')}
           />
@@ -184,17 +196,20 @@ export default function Settings() {
             label="Start week on"
             value={s.weekStart}
             onPress={() => setField('weekStart')}
+            onHelp={() => setHelp('weekStart')}
           />
           <HelpRow
             label="End day at"
             value={fmtClock(s.endDayAt)}
             onPress={() => setField('endDay')}
+            onHelp={() => setHelp('endDay')}
           />
         </Group>
 
         <Group title="Plug-ins" style={{ marginTop: 14 }}>
           <HelpRow
             label="Haptic vibration"
+            onHelp={() => setHelp('haptics')}
             right={
               <Toggle
                 on={s.haptics}
@@ -206,19 +221,6 @@ export default function Settings() {
               />
             }
           />
-          <Row style={{ paddingVertical: 13 }}>
-            <T size={16} weight={700} style={{ flex: 1 }}>
-              Status bar timer
-            </T>
-            <Toggle
-              on={s.statusBarTimer}
-              onChange={(v) =>
-                set((d) => {
-                  d.settings.statusBarTimer = v;
-                })
-              }
-            />
-          </Row>
         </Group>
       </ScrollView>
 
@@ -234,21 +236,38 @@ export default function Settings() {
           onDone={apply}
         />
       ) : null}
+
+      <Dialog visible={help !== null} onClose={() => setHelp(null)}>
+        <T d size={21} weight={800}>
+          {help ? HELP[help].title : ''}
+        </T>
+        <T size={14.5} lh={23} color={C.textMid} style={{ marginTop: 12 }}>
+          {help ? HELP[help].body : ''}
+        </T>
+        <Button label="Okay" onPress={() => setHelp(null)} style={{ marginTop: 20 }} />
+      </Dialog>
     </View>
   );
 }
 
-/** A settings row with the small "?" affordance sitting beside its label. */
+/**
+ * A settings row with the small "?" affordance sitting beside its label.
+ *
+ * The "?" is its own hit target: tapping it opens the explanation rather than
+ * falling through to the row's picker, which is what it used to do.
+ */
 function HelpRow({
   label,
   value,
   right,
   onPress,
+  onHelp,
 }: {
   label: string;
   value?: string;
   right?: React.ReactNode;
   onPress?: () => void;
+  onHelp?: () => void;
 }) {
   return (
     <Tap onPress={onPress}>
@@ -256,7 +275,9 @@ function HelpRow({
         <T size={16} weight={700}>
           {label}
         </T>
-        <Icon name="help" size={15} color={C.ghost} />
+        <Tap onPress={onHelp} hitSlop={12}>
+          <Icon name="help" size={15} color={C.ghost} />
+        </Tap>
         <View style={{ flex: 1 }} />
         {value ? (
           <T size={16} color={C.muted}>
@@ -269,4 +290,3 @@ function HelpRow({
   );
 }
 
-const iconName = (id: string) => APP_ICONS.find((i) => i.id === id)?.name ?? 'Default';

@@ -127,11 +127,6 @@ export default function TabsLayout() {
       {ORDER.map((t) => (
         <Tabs.Screen key={t.name} name={t.name} />
       ))}
-      {/* Every file under (tabs) is a tab whether or not it is listed above, so
-          the cut screen has to be excluded by name rather than by omission.
-          `href: null` keeps the route out of the dock and out of the layout's
-          own navigation state. */}
-      <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );
 }

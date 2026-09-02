@@ -7,7 +7,7 @@
  * on its own: its own date line, its own heading, its own + button.
  */
 import React, { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Alert, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CheckCoin,
@@ -60,6 +60,28 @@ export default function Checklist() {
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [edit, setEdit] = useState<ListEdit>(null);
   const [menu, setMenu] = useState<{ groupId: string; itemId?: string } | null>(null);
+
+  const confirmDeleteList = (groupId: string, title: string, count: number) =>
+    Alert.alert(
+      'Delete list',
+      count === 0
+        ? `Delete "${title}"?`
+        : `Delete "${title}" and its ${count} item${count === 1 ? '' : 's'}? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => removeChecklist(groupId) },
+      ]
+    );
+
+  const confirmRemoveItem = (groupId: string, itemId: string, title: string) =>
+    Alert.alert(`Remove "${title}"?`, undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => removeChecklistItem(groupId, itemId),
+      },
+    ]);
 
   const group = menu ? state.checklists.find((g) => g.id === menu.groupId) : undefined;
   const item = menu?.itemId ? group?.items.find((i) => i.id === menu.itemId) : undefined;
@@ -192,7 +214,7 @@ export default function Checklist() {
                   label: 'Remove item',
                   icon: 'x',
                   danger: true,
-                  onPress: () => removeChecklistItem(menu.groupId, item.id),
+                  onPress: () => confirmRemoveItem(menu.groupId, item.id, item.title),
                 },
               ]
             : menu && group
@@ -225,7 +247,10 @@ export default function Checklist() {
                     label: 'Delete list',
                     icon: 'trash',
                     danger: true,
-                    onPress: () => removeChecklist(menu.groupId),
+                    // Deleting a list takes every item with it. Routines,
+                    // themes and the account wipe all ask first; this used to
+                    // be the one destructive action that did not.
+                    onPress: () => confirmDeleteList(group.id, group.title, group.items.length),
                   },
                 ]
               : []

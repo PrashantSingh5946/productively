@@ -45,3 +45,8 @@ export function contentsLabel(routines: number, days: number): string {
   const d = `${days} day${days === 1 ? '' : 's'}`;
   return `${r} · ${d}`;
 }
+
+/** "1 routine" / "3 routines" — the counts on the account summary line. */
+export function countLabel(n: number, word: string): string {
+  return `${n} ${word}${n === 1 ? '' : 's'}`;
+}

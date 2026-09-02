@@ -10,11 +10,11 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 
-/** `1.4.2`. Falls back only if the manifest is unreadable, which it never is on device. */
+/** `1.5.0`. Falls back only if the manifest is unreadable, which it never is on device. */
 export const APP_VERSION: string = Constants.expoConfig?.version ?? '0.0.0';
 
-/** `Productively 1.4.2` — the footer every settings screen ends on. */
+/** `Productively 1.5.0` — the footer every settings screen ends on. */
 export const APP_LABEL = `Productively ${APP_VERSION}`;
 
-/** `Productively 1.4.2 · Android` — same, plus the platform, for support. */
+/** `Productively 1.5.0 · Android` — same, plus the platform, for support. */
 export const APP_LABEL_PLATFORM = `${APP_LABEL} · ${Platform.OS === 'ios' ? 'iOS' : 'Android'}`;

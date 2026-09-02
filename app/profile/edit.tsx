@@ -1,6 +1,6 @@
 /** 7.2 Edit profile. */
 import React, { useState } from 'react';
-import { ScrollView, TextInput, View } from 'react-native';
+import { Linking, ScrollView, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Grad, Row, Spacer, T, Tap, TopBar, cardSkin, rowSkin } from '../../src/ui';
@@ -13,6 +13,9 @@ import { useStore } from '../../src/store';
 import { useT } from '../../src/theming';
 const GENDERS = ['Woman', 'Man', 'Non-binary', 'Prefer not to say'];
 const AGES = ['Under 18', '18–24', '25–29', '30–34', '35–44', '45–54', '55+'];
+
+const PRIVACY_URL =
+  'https://github.com/PrashantSingh5946/productively/blob/main/PRIVACY.md';
 
 export default function EditProfile() {
   useT();
@@ -46,15 +49,29 @@ export default function EditProfile() {
         paddingHorizontal: 20,
       }}
     >
-      <TopBar onBack={() => router.back()} />
+      {/*
+        Commit before leaving. `commit` runs on blur, and tapping Back never
+        blurs the field — so typing a nickname and pressing Back discarded it.
+        That was survivable while onboarding also collected a name; with
+        onboarding gone this screen is the only place a name can be set, and
+        the most natural way to leave it was the one that threw the answer
+        away. A no-op when nothing is being edited.
+      */}
+      <TopBar
+        onBack={() => {
+          commit();
+          router.back();
+        }}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', marginTop: 14 }}>
+          {/* The "+" badge that used to sit here was a bare View — it drew the
+              universal add-a-photo affordance over an app that has no image
+              picker and no avatar field to put a photo in. Removed rather than
+              faked; if avatars ever ship, the badge comes back with a handler. */}
           <View style={AVATAR}>
             <Icon name="user" size={52} color={IDENTITY.avatarSageInk} />
-            <View style={AVATAR_ADD()}>
-              <Icon name="plus" size={15} color={C.textMid} />
-            </View>
           </View>
         </View>
 
@@ -79,8 +96,8 @@ export default function EditProfile() {
                   style={INPUT_INLINE()}
                 />
               ) : (
-                <T size={16} color={C.muted}>
-                  {p.name}
+                <T size={16} color={p.name ? C.muted : C.faint}>
+                  {p.name || 'Not set'}
                 </T>
               )}
             </Grad>
@@ -102,8 +119,8 @@ export default function EditProfile() {
               <T size={16} weight={700} style={{ flex: 1 }}>
                 Age
               </T>
-              <T size={16} color={C.muted}>
-                {p.age}
+              <T size={16} color={p.age ? C.muted : C.faint}>
+                {p.age || 'Not set'}
               </T>
             </Grad>
           </Tap>
@@ -172,17 +189,28 @@ export default function EditProfile() {
                       })
                     }
                   >
-                    <View
+                    {/*
+                      Selected used to be `backgroundColor: C.card` — inside a
+                      card that is already C.card, so a chosen intent rendered
+                      as bare floating text while the unchosen ones were the
+                      only things drawn as pills. The states read backwards.
+                      Selected now carries the accent wash and its border.
+                    */}
+                    <Grad
+                      colors={on ? G.accentWash : G.card}
+                      diag={on}
                       style={[
                         TAG,
-                        { backgroundColor: focusOpen && !on ? 'transparent' : C.card },
-                        focusOpen && !on && { borderWidth: 1.5, borderColor: C.border },
+                        {
+                          borderWidth: 1.5,
+                          borderColor: on ? C.accentWashBorder : C.border,
+                        },
                       ]}
                     >
-                      <T size={13} weight={600} color={C.textMid}>
+                      <T size={13} weight={on ? 700 : 600} color={on ? C.accentText : C.textMid}>
                         {i.label}
                       </T>
-                    </View>
+                    </Grad>
                   </Tap>
                 );
               })}
@@ -193,13 +221,16 @@ export default function EditProfile() {
         <Spacer />
       </ScrollView>
 
+      {/* These were underlined text with no handler — they looked like links
+          and were inert. Play requires a working privacy-policy link. */}
       <T size={12.5} lh={21} center color={C.ghost}>
-        Only used to tune your habit suggestions.{'\n'}
-        <T size={12.5} color={C.muted} style={{ textDecorationLine: 'underline' }}>
-          Terms
-        </T>{' '}
-        and{' '}
-        <T size={12.5} color={C.muted} style={{ textDecorationLine: 'underline' }}>
+        Stored on this device and never uploaded.{'\n'}
+        <T
+          size={12.5}
+          color={C.muted}
+          style={{ textDecorationLine: 'underline' }}
+          onPress={() => Linking.openURL(PRIVACY_URL).catch(() => {})}
+        >
           Privacy policy
         </T>
       </T>

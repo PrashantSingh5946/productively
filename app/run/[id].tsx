@@ -3,7 +3,7 @@
  * 3.2 settle · 3.3 timer · 3.4 overrun · 3.5 complete.
  * One screen holds all three phases so the run never loses its state.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import { Button, Dial, Grad, IconButton, Row, Spacer, T, Tap, rowSkin } from '..
 import { Icon, MoodFace } from '../../src/icons';
 import { C, G, SHADOW, TASK_TONES } from '../../src/theme';
 import { Routine, Task, TaskSpent, mmss, totalMinutes } from '../../src/data';
-import { weekSummary } from '../../src/analytics';
+import { dayKey, startOfDay, weekSummary } from '../../src/analytics';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
@@ -35,6 +35,20 @@ export default function Run() {
 
   const r = String(id) === 'quick' ? QUICK : routine(String(id));
   const cfg = state.settings.timer;
+
+  /**
+   * Whether finishing now will actually add a day to this routine's streak.
+   *
+   * `streakFor` only walks days the routine is scheduled on, so a Saturday run
+   * of a Mon–Fri routine adds nothing — and a second run on a day already
+   * recorded adds nothing either.
+   */
+  const todayCounts = useMemo(() => {
+    if (!r || r.days.length === 0) return false;
+    const today = startOfDay(new Date());
+    if (!r.days.includes(today.getDay())) return false;
+    return !state.sessions.some((s) => s.routineId === r.id && s.day === dayKey(today));
+  }, [r, state.sessions]);
 
   const [phase, setPhase] = useState<'settle' | 'run' | 'done'>('settle');
   const [idx, setIdx] = useState(0);
@@ -116,8 +130,11 @@ export default function Run() {
       <Complete
         routine={r}
         results={results}
-        // Today's run is not recorded until Done, so the live streak is one short.
-        streak={streakFor(r.id) + 1}
+        // Today's run is not recorded until Done, so the live streak is one
+        // short — but only when today is a day this routine is scheduled on and
+        // has not already been recorded. A blind +1 announced a "15-day streak"
+        // for a Mon–Fri routine run on a Saturday, while Today still said 14.
+        streak={streakFor(r.id) + (todayCounts ? 1 : 0)}
         // The board's third stat is "This week · on average", so it has to be
         // the week, not a rolling window.
         weekRate={weekSummary([r], state.sessions, state.settings.weekStart).pct}
@@ -296,19 +313,11 @@ function Running({
         <T size={13} weight={600} color={C.muted}>
           Task {idx + 1} of {routine.tasks.length}
         </T>
-        <Row gap={4}>
-          {[0, 1, 2].map((i) => (
-            <View
-              key={i}
-              style={{
-                width: 4.5,
-                height: 4.5,
-                borderRadius: 3,
-                backgroundColor: over ? C.stoneDeep : C.faint,
-              }}
-            />
-          ))}
-        </Row>
+        {/* This was three decorative dots sitting exactly where an overflow
+            menu belongs, with no handler — it read as a button and did
+            nothing. A spacer the width of the back button keeps the task
+            counter centred. */}
+        <View style={{ width: 40 }} />
       </Row>
 
       <Row gap={5} style={{ marginTop: 14 }}>
@@ -506,11 +515,19 @@ function Complete({
     >
       <ScrollView showsVerticalScrollIndicator={false}>
         <T d size={30} weight={800} lh={37} center style={{ marginTop: 40 }}>
-          Routine complete
+          {done === routine.tasks.length
+            ? 'Routine complete'
+            : done === 0
+              ? 'Nothing ticked off'
+              : 'Routine logged'}
         </T>
-        <T size={15} weight={500} center color={C.accentInk} style={{ marginTop: 10 }}>
-          {streak}-day streak · your longest yet
-        </T>
+        {/* No superlative: this used to read "your longest yet" on every single
+            run, without ever comparing against a previous best. */}
+        {streak > 0 ? (
+          <T size={15} weight={500} center color={C.accentInk} style={{ marginTop: 10 }}>
+            {streak}-day streak
+          </T>
+        ) : null}
 
         <Row gap={12} center={false} style={{ marginTop: 26 }}>
           <Stat

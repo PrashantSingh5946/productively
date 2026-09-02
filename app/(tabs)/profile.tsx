@@ -45,8 +45,8 @@ export default function Profile() {
             </View>
             <View style={{ flex: 1 }}>
               <Row gap={8}>
-                <T d size={19} weight={800}>
-                  {state.profile.name}
+                <T d size={19} weight={800} color={state.profile.name ? undefined : C.faint}>
+                  {state.profile.name || 'Add your name'}
                 </T>
                 <Icon name="chevR" size={15} color={C.muted} />
               </Row>
@@ -79,12 +79,6 @@ export default function Profile() {
             onPress={() => router.push('/settings/customize')}
             right={<AccentStack />}
           />
-          <RowItem
-            icon="logo"
-            label="App icon"
-            chevron
-            onPress={() => router.push('/settings/app-icon')}
-          />
         </Group>
 
         <Group title="Routine" style={{ marginTop: 12 }}>
@@ -106,7 +100,7 @@ export default function Profile() {
           <RowItem
             icon="shield"
             label="Backup & export"
-            value={state.settings.backup.enabled ? 'Drive' : 'Local'}
+            value={state.settings.backup.enabled ? 'Google Drive' : 'On this device'}
             onPress={() => router.push('/settings/backup')}
           />
           <RowItem

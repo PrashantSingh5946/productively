@@ -3,18 +3,12 @@ import React from 'react';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Dial, Grad, Row, T, Tap, Toggle, TopBar, cardSkin } from '../../src/ui';
-import { Icon, IconName } from '../../src/icons';
+import { Dial, Grad, Row, T, Toggle, TopBar, cardSkin } from '../../src/ui';
+import { Icon } from '../../src/icons';
 import { C, G, TASK_TONES } from '../../src/theme';
 import { useStore } from '../../src/store';
 
 import { useT } from '../../src/theming';
-const DISPLAYS: { key: 'clock' | 'target' | 'alarm'; icon: IconName }[] = [
-  { key: 'clock', icon: 'clock' },
-  { key: 'target', icon: 'target' },
-  { key: 'alarm', icon: 'alarm' },
-];
-
 export default function TimerSettings() {
   useT();
   const insets = useSafeAreaInsets();
@@ -86,27 +80,7 @@ export default function TimerSettings() {
             </View>
           </Grad>
 
-          <Grad colors={G.stone} style={SEGS}>
-            {DISPLAYS.map((d) => {
-              const on = t.display === d.key;
-              return (
-                <Tap key={d.key} onPress={() => flip('display')(d.key)} style={{ flex: 1 }}>
-                  {on ? (
-                    <Grad colors={G.ink} diag style={SEG_ON}>
-                      <Icon name={d.icon} size={18} color={C.onInk} />
-                    </Grad>
-                  ) : (
-                    <View style={SEG_OFF}>
-                      <Icon name={d.icon} size={18} color={C.muted} />
-                    </View>
-                  )}
-                </Tap>
-              );
-            })}
-          </Grad>
-
           <SwitchRow label="Remaining time" on={t.remainingTime} onChange={flip('remainingTime')} />
-          <SwitchRow label="Task duration" on={t.taskDuration} onChange={flip('taskDuration')} />
           <SwitchRow label="Next task" on={t.nextTask} onChange={flip('nextTask')} last />
         </Grad>
 
@@ -115,8 +89,6 @@ export default function TimerSettings() {
             Focus options
           </T>
           <SwitchRow label="Keep screen on" on={t.keepScreenOn} onChange={flip('keepScreenOn')} pad />
-          <SwitchRow label="Landscape mode" on={t.landscape} onChange={flip('landscape')} help pad />
-          <SwitchRow label="Sticky notification" on={t.sticky} onChange={flip('sticky')} help pad />
         </Grad>
 
         <Grad colors={G.card} style={[GROUP, cardSkin()]}>
@@ -191,16 +163,4 @@ const MINI_NEXT = {
   paddingVertical: 5,
   paddingHorizontal: 8,
   borderRadius: 8,
-};
-const SEGS = { flexDirection: 'row' as const, padding: 5, borderRadius: 999, marginTop: 16 };
-const SEG_ON = {
-  paddingVertical: 11,
-  borderRadius: 999,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
-};
-const SEG_OFF = {
-  paddingVertical: 11,
-  alignItems: 'center' as const,
-  justifyContent: 'center' as const,
 };

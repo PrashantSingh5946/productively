@@ -10,14 +10,21 @@ import { CONTACT_TOPICS } from '../src/data';
 import { APP_LABEL, APP_LABEL_PLATFORM } from '../src/release';
 
 import { useT } from '../src/theming';
-const mailto = (subject: string) =>
-  `mailto:hello@productively.app?subject=${encodeURIComponent(`[${subject}] ${APP_LABEL}`)}`;
+/**
+ * Issues rather than mail: `hello@productively.app` is not a domain this
+ * project owns, so every row opened a mail composer addressed to nobody — and
+ * the swallowed rejection meant a device with no mail client showed nothing at
+ * all. Swap this for a real address if you ever want one.
+ */
+const ISSUES_URL = 'https://github.com/PrashantSingh5946/productively/issues/new';
+const issueLink = (subject: string) =>
+  `${ISSUES_URL}?title=${encodeURIComponent(`[${subject}] ${APP_LABEL}`)}`;
 
 export default function Contact() {
   useT();
   const insets = useSafeAreaInsets();
 
-  const open = (subject: string) => Linking.openURL(mailto(subject)).catch(() => {});
+  const open = (subject: string) => Linking.openURL(issueLink(subject)).catch(() => {});
 
   return (
     <View style={{ flex: 1, backgroundColor: C.paper, paddingTop: insets.top, paddingHorizontal: 20 }}>
@@ -27,7 +34,8 @@ export default function Contact() {
         Contact us
       </T>
       <T size={15} lh={23} color={C.muted} style={{ marginTop: 14 }}>
-        Pick the closest thing and we'll route it to the right person. Usually a reply within a day.
+        Pick the closest thing — it opens a GitHub issue with the title filled in. This is a
+        one-person project, so replies take as long as they take.
       </T>
 
       <Group title="Report a problem" style={{ marginTop: 22 }}>

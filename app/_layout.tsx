@@ -134,7 +134,6 @@ function Navigation() {
         <Stack.Screen name="index" options={{ animation: 'fade' }} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
         <Stack.Screen name="run/[id]" options={{ animation: 'fade' }} />
-        <Stack.Screen name="free" options={{ presentation: 'modal' }} />
         <Stack.Screen
           name="task-picker"
           options={{

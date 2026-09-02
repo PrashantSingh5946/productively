@@ -6,6 +6,7 @@ import React, { useMemo, useState } from 'react';
 import { ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  Button,
   Dialog,
   Grad,
   MeterRow,
@@ -181,6 +182,7 @@ function ScopeBar({
 
 function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
   const { state } = useStore();
+  const [weekHelp, setWeekHelp] = useState(false);
   const tier = tierFor(streak);
   const nextTier = MOMENTUM_TIERS[MOMENTUM_TIERS.indexOf(tier) + 1];
   const withinTier = (streak - tier.from + 1) / (tier.to - tier.from + 1);
@@ -243,7 +245,7 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
             }}
           />
           <T size={12} weight={700} color={C.textMid} style={{ position: 'absolute', right: 14, top: 6 }}>
-            {nextTier ? `${toNext} days to ${nextTier.name}` : 'Top tier reached'}
+            {nextTier ? `${toNext} day${toNext === 1 ? '' : 's'} to ${nextTier.name}` : 'Top tier reached'}
           </T>
         </View>
       </Grad>
@@ -253,7 +255,11 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
           <T d size={22} weight={800}>
             Weekly
           </T>
-          <Icon name="help" size={17} color={C.ghost} />
+          {/* Was a bare glyph with no handler — the same decorative "?" the
+              Settings rows carried. It explains the figure now. */}
+          <Tap onPress={() => setWeekHelp(true)} hitSlop={12}>
+            <Icon name="help" size={17} color={C.ghost} />
+          </Tap>
         </Row>
         <Row gap={10}>
           <Grad colors={G.card} style={[NAV, rowSkin()]}>
@@ -278,7 +284,9 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
           </T>
         </View>
         <Grad colors={G.accent} diag style={FACE_BADGE}>
-          <MoodFace level={3} size={32} color={C.accentOn} />
+          {/* Was hardcoded to level 3, so it grinned identically at 0% and at
+              100% — a data-shaped badge carrying no data. */}
+          <MoodFace level={faceLevel(week.pct)} size={32} color={C.accentOn} />
         </Grad>
       </Grad>
 
@@ -303,8 +311,28 @@ function Summary({ streak, onRings }: { streak: number; onRings: () => void }) {
           </Row>
         ))}
       </Grad>
+
+      <Dialog visible={weekHelp} onClose={() => setWeekHelp(false)}>
+        <T d size={21} weight={800}>
+          The weekly figure
+        </T>
+        <T size={14.5} lh={23} color={C.textMid} style={{ marginTop: 12 }}>
+          Of every routine that was scheduled this week, the share you actually
+          ran. A day a routine does not repeat on is not counted against you, so
+          a weekday-only routine is not punished for the weekend. The grid below
+          shows the same week one routine per row.
+        </T>
+        <Button label="Okay" onPress={() => setWeekHelp(false)} style={{ marginTop: 20 }} />
+      </Dialog>
     </>
   );
+}
+
+/** The week's completion mapped onto the five faces. Null (nothing scheduled
+ *  yet) sits in the middle rather than smiling at an empty week. */
+function faceLevel(pct: number | null): 0 | 1 | 2 | 3 | 4 {
+  if (pct === null) return 2;
+  return Math.min(4, Math.max(0, Math.round((pct / 100) * 4))) as 0 | 1 | 2 | 3 | 4;
 }
 
 function DayDot({ state }: { state: 0 | 1 | 2 | 3 }) {
@@ -543,7 +571,6 @@ function RingsDialog({
 
 function Notes({ routineId }: { routineId: string }) {
   const { state, addNote } = useStore();
-  const [mode, setMode] = useState<'routine' | 'task'>('routine');
   const [writing, setWriting] = useState(false);
   const [draft, setDraft] = useState('');
 
@@ -551,26 +578,14 @@ function Notes({ routineId }: { routineId: string }) {
 
   return (
     <>
-      <Row gap={22} style={{ marginTop: 18, paddingLeft: 2 }}>
-        {(['routine', 'task'] as const).map((m) => (
-          <Tap key={m} onPress={() => setMode(m)}>
-            <T
-              size={15}
-              weight={mode === m ? 700 : 600}
-              color={mode === m ? C.ink : C.ghost}
-              style={{
-                paddingBottom: 7,
-                borderBottomWidth: mode === m ? 2 : 0,
-                borderBottomColor: C.ink,
-              }}
-            >
-              {m === 'routine' ? 'Routine' : 'Task'}
-            </T>
-          </Tap>
-        ))}
-      </Row>
-
-      <View style={{ gap: 12, marginTop: 18 }}>
+      {/*
+        A "Routine / Task" underline toggle used to sit here. `mode` was set by
+        the tap and read nowhere — the list is filtered by routineId alone, so
+        both states rendered the same three notes and the only thing that moved
+        was the underline. Notes are written against a run, not a task; there is
+        no per-task note to switch to.
+      */}
+      <View style={{ gap: 12, marginTop: 22 }}>
         {list.length === 0 ? (
           <T size={14.5} lh={22} color={C.muted}>
             No notes on this one yet. They're the fastest way to spot what actually changes a
