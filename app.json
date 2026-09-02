@@ -2,7 +2,7 @@
   "expo": {
     "name": "Productively",
     "slug": "productively",
-    "version": "1.4.2",
+    "version": "1.5.0",
     "scheme": "productively",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.productively.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "permissions": [
         "INTERNET",
         "ACCESS_NETWORK_STATE",
@@ -78,7 +78,8 @@
           "color": "#FF7A45",
           "defaultChannel": "routines"
         }
-      ]
+      ],
+      "./plugins/withReleaseSigning"
     ],
     "extra": {
       "demoSeed": false,

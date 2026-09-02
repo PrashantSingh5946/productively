@@ -39,3 +39,8 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Internal design + audit material. Kept local on purpose: 116 MB of
+# screenshots and defect logs would live in every clone forever.
+/docs/design-export/
+/docs/audit/

@@ -1,45 +1,162 @@
+<div align="center">
+
+<img src="assets/icon.png" width="96" alt="Productively" />
+
 # Productively
 
-Routine tracking & productivity for Android, built from the Claude Design screen
-board **`Productively v2.dc.html`** (Nothing Phone (1), 412 × 916) — 42 screens
-across 9 flows. `docs/v2-audit.md` is the screen-by-screen diff between that
-board and this code, and the plan for closing what is left.
+**A routine and habit tracker that keeps your data on your phone.**
 
-Persimmon accent on warm-stone ink, sand-tinted cards, Bricolage Grotesque over
-Instrument Sans, and a hand-drawn flat icon set — 57 glyphs, no emoji anywhere.
-Free throughout: no plans, paywalls, locked layouts or ad slots.
+No account. No ads. No paywalls. No analytics. Nothing leaves the device
+unless you export it or connect your own Google Drive.
 
-## Run it
+[![License: MIT](https://img.shields.io/badge/License-MIT-FF8A5B.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Android-7.0%2B-FF8A5B.svg)](#install)
+[![Built with Expo](https://img.shields.io/badge/Expo-SDK%2057-FF8A5B.svg)](https://expo.dev)
+
+[Website](https://productively-website.vercel.app) · [Download](#install) · [Features](#what-it-does) · [Build from source](#build-from-source) · [Privacy](PRIVACY.md)
+
+</div>
+
+---
+
+## What it does
+
+**Routines.** Build a morning or evening routine out of timed tasks, give it a
+start time and the days it repeats, then run it. Running is a real flow, not a
+checklist: a settle screen, a per-task timer with an SVG dial, an overrun state
+when a task runs long, and a completion summary that gets written to history.
+
+**Checklists.** Reusable lists that survive being used — a packing list you tick
+through, then untick in one tap for the next trip.
+
+**Statistics that are actually derived.** Streaks, completion rates, the week
+grid, the 30-day chart and per-task averages are all computed from your session
+history at read time. Nothing stores a pre-computed number, so nothing can drift
+out of agreement with the underlying record. A streak counts back over
+*scheduled* days, so a weekday routine survives the weekend, and today is never
+counted as a miss.
+
+**Reminders.** An optional notification a configurable number of minutes before
+each routine, repeating weekly on the days it runs. Off until you say yes *and*
+Android grants the permission — the two are tracked separately, because Android
+can withdraw the grant without telling the app.
+
+**Guided resets.** Two paced rescue exercises — 5‑4‑3‑2‑1 grounding and 4/4/6
+breathing — that run as timed sequences with a ring, rather than as articles
+about themselves.
+
+**Journal.** Notes with a mood, tied to the day they were written.
+
+**Yours to look at.** Four accent presets (Ember, Sky, Moss, Orchid) *or* any
+colour you like — a colour wheel built from SVG annular sectors, since React
+Native has no conic gradient — with themes you can save and reuse. Light, dark,
+or follow the phone. Ten app icons, and preference screens for the home screen
+and the timer that render a live preview of what you're changing.
+
+**Your data, portable.** Export everything to a single JSON file and import it
+back on any device. Optionally connect Google Drive for scheduled backups, with
+restore, retention and a Wi‑Fi‑only setting — modelled on WhatsApp's chat backup.
+
+## Privacy
+
+Productively has no account system, no server, and no analytics. There is no
+sign-up, no sign-in, and no telemetry of any kind.
+
+Your routines, sessions and notes live in on-device storage. They leave the
+phone in exactly two cases, both of which you start:
+
+1. You **export** a backup file and choose where to share or save it.
+2. You **connect Google Drive**, after which backups are written to the
+   [`appDataFolder`](https://developers.google.com/workspace/drive/api/guides/appdata) —
+   a hidden per-app space in *your own* Drive that no other app, including any
+   of mine, can read.
+
+The Drive integration requests the narrowest scope Google offers for this
+(`drive.appdata`) and cannot see the rest of your Drive. Full detail in
+[PRIVACY.md](PRIVACY.md).
+
+## Install
+
+### From a release
+
+Grab the APK from the [latest release](https://github.com/PrashantSingh5946/productively/releases/latest)
+and install it. Android will warn you about installing outside the Play Store —
+that's expected for a sideloaded build.
+
+The release APK is signed with a release key; verify it if you like:
 
 ```bash
+apksigner verify --print-certs Productively-1.5.0.apk
+```
+
+Two builds are attached to each release:
+
+| File | Size | Use |
+|---|---|---|
+| `Productively-1.5.0.apk` | ~58 MB | **Send this to testers.** arm64-v8a + armeabi-v7a — every phone sold in the last decade. |
+| `Productively-1.5.0-universal.apk` | ~101 MB | Adds x86/x86_64. Only needed for an emulator. |
+
+### From Play Store
+
+Not there yet.
+
+## Build from source
+
+Requires Node 20+, a JDK 17+, and the Android SDK.
+
+```bash
+git clone https://github.com/PrashantSingh5946/productively.git
+cd productively
+npm install
 npx expo run:android
 ```
 
-Or `npx expo start` and open in Expo Go / a dev client.
+Or `npx expo start` and open it in Expo Go or a dev client.
 
-## Layout
+To build a release APK:
+
+```bash
+npx expo prebuild -p android
+cd android && ./gradlew assembleRelease
+```
+
+Without a keystore configured this falls back to the debug key exactly as the
+Expo template does — the APK installs fine, it just isn't publishable. See
+[`plugins/withReleaseSigning.js`](plugins/withReleaseSigning.js) for the four
+Gradle properties that switch it to a real key.
+
+### Turning on Google Drive sync
+
+Drive is inert in a stock clone: `app.json` ships `REPLACE_WITH_*` placeholders,
+so `isDriveConfigured()` is false and the backup screen reads "Not set up"
+rather than failing at you. Export and import to a file work regardless.
+
+To enable it you need all three of:
+
+1. An **Android OAuth client** in Google Cloud, registered against package
+   `com.productively.app` and the SHA‑1 of the keystore signing your build. For
+   a debug build that's `~/.android/debug.keystore`, password `android`.
+2. That client id in `expo.extra.googleDrive.androidClientId`.
+3. The **reversed** client id added to `expo.scheme`:
+   `"scheme": ["productively", "com.googleusercontent.apps.<id>"]`. Without it
+   Google's redirect has nowhere to land and the consent screen returns to
+   nothing.
+
+All three are native config, baked into the APK at build time — a Metro reload
+will not pick them up. Rebuild. Full walkthrough in
+[`docs/google-drive-backup.md`](docs/google-drive-backup.md).
+
+## Project layout
 
 ```
 app/                       expo-router file routes
-  index.tsx                1.1  splash → onboarding or tabs
-  onboarding/              1.2 – 1.11
-  (tabs)/                  the floating dock — four tabs, not the board's five
-    home.tsx               2.1 routines · 2.2 checklist · 2.3 timeline · 2.4 add sheet
-    explore.tsx            5.1
-    analysis.tsx           4.1 summary · 4.2 per-routine · 4.3 rings · 4.4 notes
-    profile.tsx            7.1
-  routine/[id].tsx         3.1 routine detail
-  run/[id].tsx             3.2 settle · 3.3 timer · 3.4 overrun · 3.5 complete
-  template/[id].tsx        5.2
-  task-picker.tsx          5.3
-  reset/[id].tsx           the paced exercise behind Explore's RESET cards
-  profile/edit.tsx         7.2
-  settings/                7.3 index · 7.5–7.6 home-screen · 7.7 timer · 7.8 app-icon
-  free.tsx                 8.1
-  account/index.tsx        8.2
-  guide/                   9.1 index · 9.2 article
-  contact.tsx              9.3
-  labs.tsx                 reached from Profile
+  index.tsx                waits for the store, then opens Today
+  (tabs)/                  the floating dock — Today · Checklist · Stats · Profile
+  routine/[id].tsx         routine detail
+  run/[id].tsx             settle · timer · overrun · complete
+  reset/[id].tsx           the paced grounding and breathing sequences
+  settings/                index · customize · theme-wheel · timer · app-icon · backup
+  guide/                   the library index and articles
 
 src/
   theme.ts                 colour, gradient, type and radius tokens
@@ -48,75 +165,58 @@ src/
   data.ts                  the library, the guide, onboarding copy, shapes
   analytics.ts             every claim about the user's history, from sessions
   alarms.ts                routine reminders — permission, schedule, teardown
-  demo.ts                  the sample account, behind expo.extra.demoSeed
   store.tsx                app state over AsyncStorage
-  components/              TaskRow, HomeParts, WheelSheet, OnboardingChrome
+  backup/                  archive format, Drive client, scheduling engine
+  components/
+plugins/
+  withReleaseSigning.js    real keystore for release builds, survives prebuild
 ```
+
+## Checks
+
+```bash
+npm run check
+```
+
+Runs four gates: TypeScript, colour contrast across every accent in both themes,
+design-token usage, and two plain-Node suites that exercise the logic where a
+bug costs someone their data — [`scripts/check-backup.mjs`](scripts/check-backup.mjs)
+(merge collisions, omitted parts, checksum stability, schedule boundaries) and
+[`scripts/check-analytics.mjs`](scripts/check-analytics.mjs) (streaks, rates,
+scheduled-day arithmetic).
+
+Type-checking proves the shapes line up. It says nothing about whether a merge
+loses a routine, which is why those two run separately.
 
 ## Notes on the build
 
-- **The numbers are derived, not stored.** Streaks, completion, the week grid,
-  the 30-day chart and the per-task averages all come out of `state.sessions`
-  via `src/analytics.ts` — nothing holds a pre-computed figure. A streak counts
-  back over *scheduled* days, so a weekday routine survives the weekend, and
-  today is never counted as a miss. `npm run check:analytics` exercises it in
-  plain Node.
 - **The icon and splash are generated, not drawn.** `npm run icons` writes all
-  six assets from the `logo` glyph in `src/icons.tsx` and
-  `IDENTITY.icons.default` in the token layer — the same mark and colours the
-  App icon screen shows as "Default". Plain Node, no image tooling: shapes are
-  rasterised off a signed distance field and the PNGs are written by hand. Run
-  it after changing either source; the artwork cannot drift from the palette it
-  claims to come from.
-- **The sample account is opt-in, and off by default.** `expo.extra.demoSeed`
-  in `app.json` decides whether first launch generates the lived-in phone the
-  board draws — twelve days of real sessions with real per-task timings, so the
-  charts agree with the notes. It ships `false`, because a release build must
-  not open on someone else's streak; set it `true` to compare screens against
-  the board. Every seeded id is prefixed `demo-` so a restore can tell them
-  apart.
-- **No Social tab.** The board draws a feed and a friends list; both were
-  static mock-ups of a feature that needs an account system and a server. The
-  dock is Home · Explore · Stats · Profile.
-- **No account.** No sign-up, no sign-in, no sign-out. Nothing leaves the phone
-  unless you export it or connect Drive, so there is nothing for an account to
-  hold. Welcome offers *Get started* or *Import a backup*; 8.2 is "Your data".
-  The only sign-in in the app is Google's, on the backup screen.
-- **Google Drive sync is off until you supply credentials.** `expo.extra
-  .googleDrive` ships `REPLACE_WITH_*` placeholders, so `isDriveConfigured()` is
-  false and the backup screen says "Not set up" rather than failing at you.
-  Export and import to a file do not depend on it and work regardless. To turn
-  sync on you need all three of:
-  1. An **Android OAuth client** in Google Cloud registered against package
-     `com.productively.app` and the SHA-1 of the keystore that signs your build
-     (for a local debug build that is `~/.android/debug.keystore`, password
-     `android` — `keytool -list -v -keystore ...`).
-  2. That client id in `expo.extra.googleDrive.androidClientId`.
-  3. The **reversed** client id added to `expo.scheme`, e.g.
-     `"scheme": ["productively", "com.googleusercontent.apps.<id>"]`. Without it
-     Google's redirect has nowhere to land and the consent screen returns to
-     nothing.
+  six assets from the `logo` glyph in `src/icons.tsx` and the token layer — the
+  same mark and colours the App icon screen shows as "Default". Plain Node, no
+  image tooling: shapes are rasterised off a signed distance field and the PNGs
+  are written by hand. The artwork cannot drift from the palette it claims to
+  come from.
+- **The sample account is opt-in and off by default.** `expo.extra.demoSeed`
+  decides whether first launch generates a lived-in phone — twelve days of real
+  sessions with real per-task timings, so the charts agree with the notes. It
+  ships `false`, because a release build must not open on someone else's streak.
+  Every seeded id is prefixed `demo-` so a restore can tell them apart.
+- **Reminders, not alarms.** A full-screen, sound-through-silent alarm needs
+  `USE_FULL_SCREEN_INTENT` and `SCHEDULE_EXACT_ALARM`, which Google reviews case
+  by case and a routine reminder does not qualify for. The whole OS schedule is
+  rebuilt from the routines whenever a name, start time, weekday or task count
+  changes — never patched — so a renamed routine cannot leave a stale 6am
+  reminder behind.
+- **Dials, not conic gradients.** The timers are SVG arcs (`Dial` in
+  `src/ui.tsx`), including the overrun state.
+- **No account, by design.** Nothing leaves the phone unless you export it or
+  connect Drive, so there is nothing for an account to hold.
 
-  All three are native config: they are baked into the APK at build time, so a
-  Metro reload will not pick them up — rebuild.
-- **Dials, not conic gradients.** The board's `conic-gradient` timers are drawn
-  as SVG arcs (`Dial` in `src/ui.tsx`), including the overrun state.
-- **Settings drive the screens.** The Home-screen and Timer preference pages
-  render live previews, and their switches change what Home and the running
-  timer actually show.
-- **Reminders, not alarms.** `src/alarms.ts` posts a notification a configurable
-  number of minutes before each routine, repeating weekly on the days it runs.
-  A full-screen, sound-through-silent alarm would need `USE_FULL_SCREEN_INTENT`
-  and `SCHEDULE_EXACT_ALARM`, which Google reviews case by case and a routine
-  reminder does not qualify for. The whole OS schedule is rebuilt from the
-  routines whenever a name, start time, weekday or task count changes — never
-  patched — so a renamed routine cannot leave a stale 6am reminder behind. Off
-  until the user says yes *and* Android grants it; the two are tracked
-  separately, because Android can withdraw the grant without telling the app.
-- **Two interpretations.** The board draws a grid button top-left of Home
-  without a destination — it opens a "Jump to" sheet over the user's routines
-  and checklists. Labs is a row on Profile with no screen drawn; it holds the
-  two experimental toggles.
-- Deliberately out of scope, matching the board's closing note: the full
-  routine editor (alarm rules), a dark pass, widget/lock-screen surfaces, and
-  brand-new-account empty states.
+## Contributing
+
+Issues and pull requests are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md)
+for how the checks are wired and what a change is expected to keep working.
+
+## License
+
+[MIT](LICENSE) © 2026 Prashant Singh
